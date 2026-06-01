@@ -1,13 +1,16 @@
 # -*- mode: python ; coding: utf-8 -*-
-"""PyInstaller 打包配置 — Voice Input（Linux, CPU 版 torch, 不含模型权重）。
+"""PyInstaller 打包配置 — Voice Input（跨平台, CPU 版 torch, 不含模型权重）。
 
 打包:  pyinstaller voice_input.spec
-产物:  dist/voice-input/   (onedir)
+产物:
+  Linux/Windows:  dist/voice-input/        (onedir)
+  macOS:          dist/Voice Input.app     (.app bundle)
 
 模型权重不打进包，首次运行从 ModelScope 下载到 ~/.cache/modelscope。
 """
 
 import os
+import sys
 
 from PyInstaller.utils.hooks import collect_all, collect_submodules
 
@@ -73,3 +76,21 @@ coll = COLLECT(
     upx=False,
     name="voice-input",
 )
+
+# macOS 需要 .app bundle 才能双击运行、申请麦克风权限、作为托盘应用常驻。
+if sys.platform == "darwin":
+    app = BUNDLE(
+        coll,
+        name="Voice Input.app",
+        icon=None,
+        bundle_identifier="com.fnidore.voiceinput",
+        info_plist={
+            "CFBundleShortVersionString": "0.1.0",
+            "CFBundleVersion": "0.1.0",
+            # 录音权限说明（macOS 弹窗会显示这句话），缺失会被系统直接拒绝麦克风
+            "NSMicrophoneUsageDescription": "Voice Input 需要使用麦克风录音以进行语音识别。",
+            # 托盘/菜单栏应用：不在 Dock 显示图标、不抢焦点
+            "LSUIElement": True,
+            "NSHighResolutionCapable": True,
+        },
+    )

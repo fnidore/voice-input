@@ -29,40 +29,113 @@ jobs:
       - name: Run unit tests
         run: python -m pytest tests/ -q
 
+  # ───────────────────────── 原生安装包打包 ─────────────────────────
+  # 仅在打 tag (v*) 时触发；三平台并行各产出本地原生安装包。
+  # 模型权重不打入包，首次运行从 ModelScope 自动下载。
+  package:
+    name: Package (${{ matrix.os }})
+    needs: test
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: (Linux) 安装 PortAudio 系统库
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libportaudio2
+
+      - name: 安装打包依赖（CPU 版 torch）
+        run: |
+          python -m pip install --upgrade pip
+          pip install torch torchaudio --index-url https://download.pytorch.org/whl/cpu
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: PyInstaller 打包
+        run: pyinstaller voice_input.spec
+
+      - name: (Linux) 打 .deb
+        if: runner.os == 'Linux'
+        run: bash build_deb.sh "${GITHUB_REF_NAME#v}"
+
+      - name: (Windows) Inno Setup 打 setup.exe
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $ver = "${{ github.ref_name }}".TrimStart('v')
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" /DMyAppVersion=$ver installer\windows\voice-input.iss
+
+      - name: (macOS) 打 .dmg
+        if: runner.os == 'macOS'
+        run: bash build_dmg.sh "${GITHUB_REF_NAME#v}"
+
+      - name: 收集产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: package-${{ matrix.os }}
+          path: |
+            dist/*.deb
+            dist/*.dmg
+            installer/windows/Output/*.exe
+          if-no-files-found: ignore
+          retention-days: 3
+
+  # ───────────────────────── 发布 Release ─────────────────────────
   release:
     name: Create Release
-    needs: test
+    needs: package
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - name: 下载三平台产物
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           generate_release_notes: true
+          files: |
+            artifacts/**/*.deb
+            artifacts/**/*.exe
+            artifacts/**/*.dmg
           body: |
-            ## 📥 安装方式（源码安装）
+            ## 📥 下载原生安装包
 
-            下载下方 **Source code (zip / tar.gz)** 解压，或 `git clone` 本仓库后按平台运行：
+            从下方 **Assets** 选择对应平台的安装包，开箱即用（无需配置 Python 环境）：
 
-            ### 🐧 Linux (X11)
+            | 平台 | 文件 | 安装方式 |
+            |------|------|----------|
+            | 🐧 Linux (X11) | `voice-input_*_amd64.deb` | `sudo dpkg -i voice-input_*.deb` |
+            | 🪟 Windows x64 | `voice-input-*-setup.exe` | 双击运行安装向导 |
+            | 🍎 macOS (Apple Silicon) | `voice-input-*.dmg` | 打开 dmg 拖入「应用程序」 |
+
+            > ⚠️ 三平台首次运行会自动下载约 1GB 的 SenseVoice 模型（联网）。
+            > 安装包内置 **CPU 版 PyTorch**；N 卡 GPU 加速请改用源码安装，见 README。
+            > macOS 需在「系统设置 → 隐私与安全性 → 辅助功能 / 麦克风」中授权后才能录音与模拟按键。
+
+            ---
+
+            <details><summary>📦 偏好源码安装？点此展开</summary>
+
             ```bash
+            # Linux
             bash install.sh
-            ```
-
-            ### 🪟 Windows
-            ```powershell
+            # Windows
             powershell -ExecutionPolicy Bypass -File install_windows.ps1
-            ```
-
-            ### 🍎 macOS
-            ```bash
+            # macOS
             bash install_macos.sh
             ```
-
-            > ⚠️ 三平台首次运行会自动下载 ~1GB SenseVoice 模型。
-            > Windows / macOS 默认安装 CPU 版 PyTorch；N 卡 GPU 加速见 README。
-            > macOS 需在「系统设置 → 隐私与安全性 → 辅助功能」授权后才能模拟按键。
+            </details>
