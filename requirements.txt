@@ -1,0 +1,18 @@
+# ===== 语音识别 =====
+funasr>=1.1.0
+modelscope>=1.20.0
+
+# ===== 录音 =====
+sounddevice>=0.4.6
+numpy>=1.24,<2.2
+
+# ===== 全局快捷键 =====
+pynput>=1.7.6
+
+# ===== GUI =====
+PySide6>=6.5
+Pillow>=10.0
+
+# PyTorch 注意事项:
+# RTX 5060 (Blackwell, sm_120) 需要 CUDA 12.8+ 的 torch
+# 在 setup_env.sh 中单独装，不写在这里避免 pip 装错版本
