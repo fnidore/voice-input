@@ -1,7 +1,30 @@
-# Voice Input · 全局语音输入（SenseVoice + PySide6 GUI + Linux/X11）
+# 🎤 Voice Input · 全局语音输入
 
-按住快捷键说话，松开就把识别结果打到当前光标位置。中英文混说、自动加标点。
-带系统托盘 GUI、设置窗口、识别历史、热词支持、开机自启。
+> 按住快捷键说话，松开就把识别结果打到当前光标位置。中英文混说、自动加标点。
+> SenseVoice 推理 + PySide6 托盘 GUI，专为 Linux/X11 打造。
+
+<p>
+  <img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License: MIT">
+  <img src="https://img.shields.io/badge/Python-3.10-blue.svg" alt="Python 3.10">
+  <img src="https://img.shields.io/badge/Platform-Linux%20%2F%20X11-orange.svg" alt="Platform Linux/X11">
+  <img src="https://img.shields.io/badge/PyTorch-%E2%89%A52.7%20cu128-ee4c2c.svg" alt="PyTorch >=2.7">
+  <img src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg" alt="PRs welcome">
+  <img src="https://img.shields.io/github/stars/fnidore/voice-input?style=social" alt="GitHub stars">
+</p>
+
+## ✨ 特性
+
+- 🎤 **按住说话，松开即输入** —— push-to-talk，识别结果自动打到光标处
+- 🌏 **中英文混说 + 自动标点** —— SenseVoice 多语言识别
+- ⚡ **极快** —— RTX 5060 实测 RTF ~0.02（说 5 秒约 0.1s 出字）
+- 🖥️ **系统托盘 GUI** —— 三态图标 + 5 个 Tab 设置窗口
+- 📝 **识别历史 + 热词增强** —— 专有名词识别更准
+- 🚀 **开机自启 + 一键安装/卸载** —— `install.sh` / `uninstall.sh` 全自动
+
+## 📸 界面预览
+
+> 截图待补充。运行后把托盘 + 设置窗口截图放到 `assets/` 目录，并在此处引用：
+> `![设置窗口](assets/settings.png)`
 
 ## 开发 / 测试环境（作者实测）
 
