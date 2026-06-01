@@ -9,7 +9,6 @@ from __future__ import annotations
 import logging
 import os
 import signal
-import socket
 import sys
 from pathlib import Path
 
@@ -18,20 +17,11 @@ from PySide6.QtWidgets import QApplication, QMessageBox, QSystemTrayIcon
 # 让 from core/from gui 这种绝对导入能找到包
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from core.config import Config, ensure_dirs   # noqa: E402
-from core.logger import setup_logging          # noqa: E402
+from core.config import Config, ensure_dirs       # noqa: E402
+from core.logger import setup_logging              # noqa: E402
+from core.singleton import acquire_single_instance_lock  # noqa: E402
 
 logger = logging.getLogger(__name__)
-
-
-def _acquire_single_instance_lock() -> socket.socket | None:
-    """用 abstract Unix domain socket 实现单例。被占用就返回 None"""
-    sock = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
-    try:
-        sock.bind("\0voice-input-singleton")
-        return sock
-    except OSError:
-        return None
 
 
 def _wait_for_tray(app: QApplication, max_wait_seconds: int = 30) -> bool:
@@ -76,7 +66,7 @@ def main() -> int:
     logger.info("=" * 60)
     logger.info("Voice Input GUI starting (pid=%d)", os.getpid())
 
-    lock = _acquire_single_instance_lock()
+    lock = acquire_single_instance_lock()
     if lock is None:
         QApplication(sys.argv)
         QMessageBox.warning(None, "已在运行", "Voice Input 已经在运行了。\n请到系统托盘查看。")
