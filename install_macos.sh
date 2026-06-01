@@ -32,8 +32,8 @@ echo "安装依赖 (requirements.txt) ..."
 "$PY" -m pip install -r "$PROJ/requirements.txt"
 
 # 4. 安装 PyTorch（CPU 版；Apple Silicon 会自动支持 MPS 加速）
-echo "安装 PyTorch ..."
-"$PY" -m pip install torch
+echo "安装 PyTorch + torchaudio ..."
+"$PY" -m pip install torch torchaudio
 
 # 5. 完成提示
 cat <<EOF

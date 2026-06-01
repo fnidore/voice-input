@@ -33,7 +33,7 @@ Write-Host "安装依赖 (requirements.txt) ..." -ForegroundColor Yellow
 
 # 4. 安装 PyTorch (默认 CPU 版)
 Write-Host "安装 PyTorch (CPU 版) ..." -ForegroundColor Yellow
-& $pyExe -m pip install torch --index-url https://download.pytorch.org/whl/cpu
+& $pyExe -m pip install torch torchaudio --index-url https://download.pytorch.org/whl/cpu
 Write-Host "如需 N 卡 GPU 加速，请到 https://pytorch.org 选对应 CUDA 版重装 torch" -ForegroundColor DarkGray
 
 # 5. 完成提示
