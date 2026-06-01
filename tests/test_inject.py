@@ -153,8 +153,10 @@ class TestWindowsBackend:
         assert state["copies"] == []
         assert state["pressed"] == []
 
-    def test_check_deps_is_empty(self):
-        # Windows 不依赖外部命令行工具
+    def test_check_deps_is_empty(self, monkeypatch):
+        # Windows 不依赖外部命令行工具（mock pyperclip/pynput 模拟已安装，
+        # 避免在 headless Linux CI 上真实 import pynput 触发 X 连接失败）
+        _install_fake_clipboard_and_keyboard(monkeypatch)
         assert win_backend.check_deps("paste") == []
 
     def test_is_terminal_window_false(self):
@@ -169,5 +171,6 @@ class TestMacosBackend:
         # macOS 用 Cmd 粘贴
         assert any(item[1] == "KEY_CMD" for item in state["pressed"])
 
-    def test_check_deps_is_empty(self):
+    def test_check_deps_is_empty(self, monkeypatch):
+        _install_fake_clipboard_and_keyboard(monkeypatch)
         assert mac_backend.check_deps("paste") == []
