@@ -199,6 +199,16 @@ conda env remove -n voice_input
 rm -rf voice-input
 ```
 
+## ⭐ Star History
+
+<a href="https://star-history.com/#fnidore/voice-input&Date">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=fnidore/voice-input&type=Date&theme=dark" />
+    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=fnidore/voice-input&type=Date" />
+    <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=fnidore/voice-input&type=Date" />
+  </picture>
+</a>
+
 ## 致谢
 
 - [SenseVoice](https://github.com/FunAudioLLM/SenseVoice) / [FunASR](https://github.com/modelscope/FunASR) —— 语音识别模型
