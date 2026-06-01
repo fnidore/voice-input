@@ -70,9 +70,14 @@ class TestLinuxBackend:
 
             class R:
                 returncode = 0
-                stdout = ""  # detect 返回空串 -> 非终端，避免触发 bytes 分支
+                stdout = ""  # detect(text=True) 返回空串 -> 非终端
 
-            return R()
+            r = R()
+            # 真实的 `xclip -selection clipboard -o` 不带 text=True，返回 bytes，
+            # 让 mock 也返回 bytes，覆盖剪贴板备份/恢复的 bytes 代码路径。
+            if "xclip" in cmd and "-o" in cmd:
+                r.stdout = b"original-clipboard"
+            return r
 
         monkeypatch.setattr(linux_backend.subprocess, "run", fake_run)
         return calls
@@ -144,8 +149,13 @@ class TestWindowsBackend:
         state = _install_fake_clipboard_and_keyboard(monkeypatch)
         win_backend.inject_via_paste("你好世界")
         assert "你好世界" in state["copies"]
-        # 用到了 ctrl 修饰键
-        assert any(item[1] == "KEY_CTRL" for item in state["pressed"])
+        # Ctrl+V：修饰键先按后放，主键 v 夹在中间
+        assert state["pressed"] == [
+            ("press", "KEY_CTRL"),
+            ("press", "v"),
+            ("release", "v"),
+            ("release", "KEY_CTRL"),
+        ]
 
     def test_paste_empty_is_noop(self, monkeypatch):
         state = _install_fake_clipboard_and_keyboard(monkeypatch)
@@ -168,8 +178,13 @@ class TestMacosBackend:
         state = _install_fake_clipboard_and_keyboard(monkeypatch)
         mac_backend.inject_via_paste("hello")
         assert "hello" in state["copies"]
-        # macOS 用 Cmd 粘贴
-        assert any(item[1] == "KEY_CMD" for item in state["pressed"])
+        # macOS 用 Cmd+V（配置默认 ctrl+v 被转换为 cmd+v）
+        assert state["pressed"] == [
+            ("press", "KEY_CMD"),
+            ("press", "v"),
+            ("release", "v"),
+            ("release", "KEY_CMD"),
+        ]
 
     def test_check_deps_is_empty(self, monkeypatch):
         _install_fake_clipboard_and_keyboard(monkeypatch)

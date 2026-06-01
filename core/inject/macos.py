@@ -26,7 +26,10 @@ def inject_via_paste(
     paste_key: str = "ctrl+v",
     terminal_paste_key: str = "ctrl+shift+v",
 ) -> None:
-    _c.clipboard_paste(text, "cmd")
+    combo = terminal_paste_key if is_terminal_window() else paste_key
+    # macOS 用 Cmd 代替 Ctrl（配置默认是 ctrl+v，这里统一换成 cmd+v）
+    combo = combo.replace("ctrl", "cmd")
+    _c.clipboard_paste(text, combo)
 
 
 def inject_via_type(text: str) -> None:

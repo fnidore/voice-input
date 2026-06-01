@@ -12,6 +12,10 @@ if (-not $py) {
 }
 $ver = (python -c "import sys;print('%d.%d' % sys.version_info[:2])")
 Write-Host "检测到 Python $ver"
+if ([version]$ver -lt [version]"3.10") {
+    Write-Error "需要 Python 3.10+，当前为 $ver，请升级后重试"
+    exit 1
+}
 
 # 2. 创建虚拟环境
 $proj = $PSScriptRoot

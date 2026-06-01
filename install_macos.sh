@@ -11,7 +11,12 @@ if ! command -v python3 >/dev/null 2>&1; then
     echo "❌ 未找到 python3，请先安装 Python 3.10+（推荐 https://www.python.org 或 brew install python@3.10）"
     exit 1
 fi
-echo "检测到 $(python3 --version)"
+PYVER=$(python3 -c 'import sys;print("%d.%d" % sys.version_info[:2])')
+echo "检测到 Python $PYVER"
+if ! python3 -c 'import sys;exit(0 if sys.version_info[:2] >= (3, 10) else 1)'; then
+    echo "❌ 需要 Python 3.10+，当前为 $PYVER，请升级后重试"
+    exit 1
+fi
 
 # 2. 创建虚拟环境
 VENV="$PROJ/.venv"

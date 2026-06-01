@@ -23,7 +23,9 @@ def inject_via_paste(
     paste_key: str = "ctrl+v",
     terminal_paste_key: str = "ctrl+shift+v",
 ) -> None:
-    _c.clipboard_paste(text, "ctrl")
+    # Windows Terminal 等也用 Ctrl+V，is_terminal_window 恒为 False，统一走 paste_key
+    combo = terminal_paste_key if is_terminal_window() else paste_key
+    _c.clipboard_paste(text, combo)
 
 
 def inject_via_type(text: str) -> None:

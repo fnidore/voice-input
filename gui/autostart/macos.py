@@ -31,6 +31,8 @@ def _plist_content() -> str:
         <string>{sys.executable}</string>
         <string>{gui}</string>
     </array>
+    <key>WorkingDirectory</key>
+    <string>{project_dir}</string>
     <key>RunAtLoad</key>
     <true/>
     <key>KeepAlive</key>

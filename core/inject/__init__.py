@@ -12,10 +12,13 @@ detect_active_window_class，新增 get_backend_name 便于调试。
 
 from __future__ import annotations
 
+import logging
 import sys
 from types import ModuleType
 
 from . import linux, macos, windows
+
+logger = logging.getLogger(__name__)
 
 
 def _select_backend(platform: str) -> ModuleType:
@@ -26,6 +29,7 @@ def _select_backend(platform: str) -> ModuleType:
         return windows
     if platform == "darwin":
         return macos
+    logger.warning("未识别的平台 %r，回退使用 Linux 注入后端", platform)
     return linux
 
 

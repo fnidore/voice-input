@@ -31,7 +31,7 @@ PartOf=graphical-session.target
 
 [Service]
 Type=simple
-ExecStart=/bin/bash {run_script}
+ExecStart=/bin/bash "{run_script}"
 Restart=on-failure
 RestartSec=5
 # 让 GUI 能连上 X server

@@ -217,7 +217,7 @@ class TrayApp(QObject):
             set_autostart(enabled)
             _notify(
                 "开机自启",
-                f"{'已启用' if enabled else '已禁用'} systemd user service",
+                "已启用（登录后自动启动）" if enabled else "已禁用",
             )
         except Exception as e:
             QMessageBox.critical(None, "自启配置失败", str(e))
