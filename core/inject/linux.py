@@ -1,4 +1,7 @@
-"""把识别结果打到当前光标位置：剪贴板粘贴（推荐） / xdotool type"""
+"""Linux/X11 文字注入后端：剪贴板粘贴（xclip + xdotool） / xdotool type。
+
+行为与重构前的 core/inject.py 完全一致，专为 X11 桌面环境。
+"""
 
 from __future__ import annotations
 
@@ -34,6 +37,10 @@ TERMINAL_CLASSES: frozenset[str] = frozenset({
 })
 
 _WM_CLASS_RE = re.compile(r'"([^"]+)"')
+
+
+def get_backend_name() -> str:
+    return "linux"
 
 
 def detect_active_window_class() -> str:
