@@ -1,12 +1,12 @@
 # 🎤 Voice Input · 全局语音输入
 
 > 按住快捷键说话，松开就把识别结果打到当前光标位置。中英文混说、自动加标点。
-> SenseVoice 推理 + PySide6 托盘 GUI，专为 Linux/X11 打造。
+> SenseVoice 推理 + PySide6 托盘 GUI。主攻 Linux/X11，并提供 Windows / macOS 原生安装包。
 
 <p>
   <img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License: MIT">
   <img src="https://img.shields.io/badge/Python-3.10-blue.svg" alt="Python 3.10">
-  <img src="https://img.shields.io/badge/Platform-Linux%20%2F%20X11-orange.svg" alt="Platform Linux/X11">
+  <img src="https://img.shields.io/badge/Platform-Linux%20%7C%20Windows%20%7C%20macOS-orange.svg" alt="Platform Linux | Windows | macOS">
   <img src="https://img.shields.io/badge/PyTorch-%E2%89%A52.7%20cu128-ee4c2c.svg" alt="PyTorch >=2.7">
   <img src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg" alt="PRs welcome">
   <img src="https://img.shields.io/github/stars/fnidore/voice-input?style=social" alt="GitHub stars">
@@ -32,7 +32,8 @@
 - RTX 5060 Laptop 8GB（Blackwell, sm_120, 需要 PyTorch ≥ 2.7 + CUDA 12.8）
 - Ubuntu 22.04, X11
 
-> ⚠️ 目前仅支持 **Linux + X11**（依赖 xdotool/xclip）。Wayland、macOS、Windows 暂未支持。
+> ✅ **Linux + X11** 是一等公民（托盘 / 全局热键 / 文字注入体验完整，依赖 xdotool/xclip）。
+> 🧪 **Windows / macOS** 已提供原生安装包（CPU 版，跨平台支持目前为实验性，欢迎反馈）。Linux 下 **Wayland** 暂未适配。
 
 ## 项目结构
 
@@ -65,10 +66,24 @@ voice_input/
 
 ## 安装
 
-> ⚠️ **Linux (X11)** 是一等公民，托盘 / 全局热键 / 文字注入体验完整。
-> **Windows / macOS** 为跨平台支持（默认 CPU 版 PyTorch，社区实验性，欢迎反馈）。
+### 📦 方式一：下载原生安装包（推荐，开箱即用）
 
-### 🐧 Linux (X11)
+不用装 Python、不用配环境，到 [**Releases**](https://github.com/fnidore/voice-input/releases/latest) 下载对应平台的安装包即可：
+
+| 平台 | 安装包 | 安装方式 |
+|------|--------|----------|
+| 🐧 Linux (X11) | `voice-input_*_amd64.deb` | `sudo dpkg -i voice-input_*.deb` |
+| 🪟 Windows x64 | `voice-input-*-setup.exe` | 双击运行安装向导 |
+| 🍎 macOS (Apple Silicon) | `voice-input-*.dmg` | 打开 dmg 拖入「应用程序」 |
+
+> - 📥 首次运行会自动下载约 **1GB** 的 SenseVoice 模型（联网，存到 `~/.cache/modelscope`）。
+> - 🧮 原生包内置 **CPU 版 PyTorch**；需要 **N 卡 GPU 加速**请用下方「方式二：从源码安装」。
+> - 🍎 macOS 需在「系统设置 → 隐私与安全性 → 辅助功能 / 麦克风」授权后才能录音与模拟按键。
+> - 🧪 Windows / macOS 包为跨平台支持，目前为实验性，遇到问题欢迎提 [Issue](https://github.com/fnidore/voice-input/issues) 反馈。
+
+### 🛠️ 方式二：从源码安装（开发者 / 需要 GPU 加速）
+
+#### 🐧 Linux (X11)
 
 ```bash
 # 0) 克隆仓库
@@ -85,7 +100,7 @@ bash setup_env.sh
 bash run_gui.sh
 ```
 
-### 🪟 Windows
+#### 🪟 Windows
 
 ```powershell
 git clone https://github.com/fnidore/voice-input.git
@@ -95,7 +110,7 @@ powershell -ExecutionPolicy Bypass -File install_windows.ps1
 .venv\Scripts\python voice_input_gui.py
 ```
 
-### 🍎 macOS
+#### 🍎 macOS
 
 ```bash
 git clone https://github.com/fnidore/voice-input.git
