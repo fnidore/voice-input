@@ -144,7 +144,7 @@ class SettingsWindow(QDialog):
         form.addRow("提示音音量:", self.spn_volume)
 
         # 开机自启
-        self.chk_autostart = QCheckBox("开机自启（systemd user service）")
+        self.chk_autostart = QCheckBox("开机自启（登录后自动启动）")
         self.chk_autostart.setChecked(self.config.autostart_enabled)
         form.addRow(self.chk_autostart)
 
