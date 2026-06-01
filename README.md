@@ -63,7 +63,12 @@ voice_input/
 └── setup_env.sh           ← 建 conda 环境 + 装 PyTorch/FunASR
 ```
 
-## 三步装好
+## 安装
+
+> ⚠️ **Linux (X11)** 是一等公民，托盘 / 全局热键 / 文字注入体验完整。
+> **Windows / macOS** 为跨平台支持（默认 CPU 版 PyTorch，社区实验性，欢迎反馈）。
+
+### 🐧 Linux (X11)
 
 ```bash
 # 0) 克隆仓库
@@ -79,6 +84,28 @@ bash setup_env.sh
 # 3) 启动 GUI
 bash run_gui.sh
 ```
+
+### 🪟 Windows
+
+```powershell
+git clone https://github.com/fnidore/voice-input.git
+cd voice-input
+powershell -ExecutionPolicy Bypass -File install_windows.ps1
+# 启动
+.venv\Scripts\python voice_input_gui.py
+```
+
+### 🍎 macOS
+
+```bash
+git clone https://github.com/fnidore/voice-input.git
+cd voice-input
+bash install_macos.sh
+# 启动
+.venv/bin/python voice_input_gui.py
+```
+
+> macOS 首次运行需在「系统设置 → 隐私与安全性 → 辅助功能」授权，pynput 才能模拟按键。
 
 启动后会出现一个**麦克风图标**在系统托盘里：
 - 灰色 = 待机

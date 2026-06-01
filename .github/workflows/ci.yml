@@ -1,0 +1,68 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    name: Test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install test dependencies
+        run: python -m pip install --upgrade pip pytest pyperclip pynput
+
+      - name: Run unit tests
+        run: python -m pytest tests/ -q
+
+  release:
+    name: Create Release
+    needs: test
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          body: |
+            ## 📥 安装方式（源码安装）
+
+            下载下方 **Source code (zip / tar.gz)** 解压，或 `git clone` 本仓库后按平台运行：
+
+            ### 🐧 Linux (X11)
+            ```bash
+            bash install.sh
+            ```
+
+            ### 🪟 Windows
+            ```powershell
+            powershell -ExecutionPolicy Bypass -File install_windows.ps1
+            ```
+
+            ### 🍎 macOS
+            ```bash
+            bash install_macos.sh
+            ```
+
+            > ⚠️ 三平台首次运行会自动下载 ~1GB SenseVoice 模型。
+            > Windows / macOS 默认安装 CPU 版 PyTorch；N 卡 GPU 加速见 README。
+            > macOS 需在「系统设置 → 隐私与安全性 → 辅助功能」授权后才能模拟按键。
