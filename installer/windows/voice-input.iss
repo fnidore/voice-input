@@ -33,6 +33,9 @@ SolidCompression=yes
 WizardStyle=modern
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
+; 安装程序自身图标 + 控制面板卸载项图标
+SetupIconFile=..\..\assets\icon.ico
+UninstallDisplayIcon={app}\{#MyAppExeName}
 
 [Languages]
 ; 注：GitHub runner 的 Inno Setup 默认只带英文 Default.isl，

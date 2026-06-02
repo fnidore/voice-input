@@ -22,6 +22,9 @@ mkdir -p "$BUILD/DEBIAN" "$BUILD/opt/voice-input" "$BUILD/usr/bin" "$BUILD/usr/s
 echo ">>> 复制程序到 /opt/voice-input"
 cp -r "$DIST/." "$BUILD/opt/voice-input/"
 
+echo ">>> 复制应用图标"
+cp "$PROJ/assets/icon.png" "$BUILD/opt/voice-input/icon.png"
+
 echo ">>> 写 /usr/bin 启动器"
 cat > "$BUILD/usr/bin/voice-input" <<'EOF'
 #!/bin/sh
@@ -36,6 +39,7 @@ Type=Application
 Name=Voice Input
 Comment=全局语音输入 (SenseVoice)
 Exec=/usr/bin/voice-input
+Icon=/opt/voice-input/icon.png
 Terminal=false
 Categories=Utility;AudioVideo;
 EOF

@@ -55,6 +55,13 @@ a = Analysis(
 
 pyz = PYZ(a.pure)
 
+# 应用图标：Windows 用 .ico，macOS 用 .icns（Linux ELF 无图标，PyInstaller 忽略）
+_icon = None
+if sys.platform == "win32":
+    _icon = "assets/icon.ico"
+elif sys.platform == "darwin":
+    _icon = "assets/icon.icns"
+
 exe = EXE(
     pyz,
     a.scripts,
@@ -66,6 +73,7 @@ exe = EXE(
     strip=False,
     upx=False,
     console=False,
+    icon=_icon,
 )
 
 coll = COLLECT(
@@ -82,7 +90,7 @@ if sys.platform == "darwin":
     app = BUNDLE(
         coll,
         name="Voice Input.app",
-        icon=None,
+        icon="assets/icon.icns",
         bundle_identifier="com.fnidore.voiceinput",
         info_plist={
             "CFBundleShortVersionString": "0.1.0",
