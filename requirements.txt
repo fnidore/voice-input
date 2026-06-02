@@ -8,6 +8,8 @@ numpy>=1.24,<2.2
 
 # ===== 全局快捷键 =====
 pynput>=1.7.6
+# pynput 在 Linux 经 python-xlib 访问 X11（PyInstaller 需显式打包，见 voice_input.spec）
+python-xlib>=0.31; sys_platform == "linux"
 
 # ===== 剪贴板（Windows/macOS 文字注入用；Linux 走 xclip 命令）=====
 pyperclip>=1.8

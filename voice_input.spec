@@ -40,6 +40,11 @@ for pkg in ("funasr", "modelscope", "sounddevice", "pynput", "pyperclip"):
 hiddenimports += collect_submodules("funasr")
 hiddenimports += ["sounddevice", "numpy", "core", "gui"]
 
+# pynput 在 Linux 通过 python-xlib (Xlib) 访问 X11，属运行时动态导入，
+# PyInstaller 静态分析抓不到，需显式收集，否则打包后报 No module named 'Xlib'
+if sys.platform.startswith("linux"):
+    hiddenimports += collect_submodules("Xlib")
+
 a = Analysis(
     ["voice_input_gui.py"],
     pathex=["."],
