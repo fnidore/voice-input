@@ -32,8 +32,10 @@ from PySide6.QtWidgets import (
 from core.audio import Recorder
 from core.config import Config, LOG_DIR
 from core.history import History
+from core.presets import PRESETS, get_preset, model_cache_path
 
 from .hotkey_capture import HotkeyCaptureButton
+from .style import apply_neon_theme
 from .volume_meter import VolumeMeter
 
 logger = logging.getLogger(__name__)
@@ -77,6 +79,11 @@ class SettingsWindow(QDialog):
         root.addWidget(self.tabs)
         root.addLayout(btn_row)
 
+        # 深色霓虹主题
+        apply_neon_theme(self)
+        # 初始化模型说明/路径/语言灰显（所有 tab 已建好，可安全引用跨 tab 控件）
+        self._on_preset_changed()
+
         # 启动日志刷新定时器
         self._log_timer = QTimer(self)
         self._log_timer.timeout.connect(self._refresh_log)
@@ -87,13 +94,37 @@ class SettingsWindow(QDialog):
         w = QWidget()
         form = QFormLayout(w)
 
+        # 识别模型（预设）
+        self.cmb_preset = QComboBox()
+        for key, p in PRESETS.items():
+            self.cmb_preset.addItem(p.label, key)
+        cur = get_preset(self.config.model_preset)
+        for i in range(self.cmb_preset.count()):
+            if self.cmb_preset.itemData(i) == cur.key:
+                self.cmb_preset.setCurrentIndex(i)
+                break
+        self.cmb_preset.currentIndexChanged.connect(self._on_preset_changed)
+        form.addRow("识别模型:", self.cmb_preset)
+
+        # 模型说明 + 本地路径（_on_preset_changed 填充）
+        self.lbl_preset_desc = QLabel()
+        self.lbl_preset_desc.setWordWrap(True)
+        self.lbl_preset_desc.setStyleSheet("color:#7fe3f5; font-size:12px;")
+        form.addRow("", self.lbl_preset_desc)
+
+        self.lbl_model_path = QLabel()
+        self.lbl_model_path.setWordWrap(True)
+        self.lbl_model_path.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        self.lbl_model_path.setStyleSheet("color:#6b7890; font-size:11px;")
+        form.addRow("模型路径:", self.lbl_model_path)
+
         # 模型设备
         self.cmb_device = QComboBox()
         self.cmb_device.addItems(["cuda:0", "cpu"])
         self.cmb_device.setCurrentText(self.config.model_device)
         form.addRow("模型设备:", self.cmb_device)
 
-        # 识别语言
+        # 识别语言（仅多语种模型可用，_on_preset_changed 控制灰显）
         self.cmb_lang = QComboBox()
         for lang in ["zh", "en", "auto", "yue", "ja", "ko"]:
             self.cmb_lang.addItem(lang)
@@ -149,6 +180,27 @@ class SettingsWindow(QDialog):
         form.addRow(self.chk_autostart)
 
         return w
+
+    def _on_preset_changed(self) -> None:
+        """模型预设变化：更新说明、本地路径、语言/热词可用性提示。"""
+        p = get_preset(self.cmb_preset.currentData())
+        self.lbl_preset_desc.setText("💡 " + p.desc)
+        path = model_cache_path(p)
+        mark = "✓ 已下载" if path.exists() else "· 首次选用会自动联网下载（约 1GB）"
+        self.lbl_model_path.setText(f"{path}\n{mark}")
+        # 识别语言仅多语种模型可用
+        self.cmb_lang.setEnabled(p.accepts_language)
+        # 热词 tab 动态提示
+        if hasattr(self, "lbl_hotword_note"):
+            if p.accepts_hotword:
+                self.lbl_hotword_note.setText(
+                    f"✅ 当前模型「{p.label}」热词增强强，下面的热词会显著提升识别准确率。"
+                )
+            else:
+                self.lbl_hotword_note.setText(
+                    f"⚠️ 当前模型「{p.label}」对热词支持弱，可能不明显生效；"
+                    "想用热词请切到「Paraformer 中文」。"
+                )
 
     def _wrap_layout(self, layout) -> QWidget:
         w = QWidget()
@@ -233,6 +285,11 @@ class SettingsWindow(QDialog):
         hint.setWordWrap(True)
         v.addWidget(hint)
 
+        self.lbl_hotword_note = QLabel()
+        self.lbl_hotword_note.setWordWrap(True)
+        self.lbl_hotword_note.setStyleSheet("color:#7fe3f5; font-size:12px;")
+        v.addWidget(self.lbl_hotword_note)
+
         self.txt_hotwords = QPlainTextEdit()
         self.txt_hotwords.setPlainText(self.config.hotwords)
         v.addWidget(self.txt_hotwords, 1)
@@ -307,6 +364,7 @@ class SettingsWindow(QDialog):
     # ---------- 保存 ----------
     def _save(self) -> None:
         cfg = self.config
+        cfg.model_preset = self.cmb_preset.currentData()
         cfg.model_device = self.cmb_device.currentText()
         cfg.language = self.cmb_lang.currentText()
         cfg.input_method = "paste" if self.cmb_input_method.currentIndex() == 0 else "type"

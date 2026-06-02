@@ -83,7 +83,7 @@ class TrayApp(QObject):
         self.config = config
         self.use_floating = use_floating
         self.history = History(max_items=config.history_max)
-        self.recognizer = Recognizer(device=config.model_device)
+        self.recognizer = Recognizer(preset_key=config.model_preset, device=config.model_device)
         self.recorder: Recorder | None = None
         self.hotkey = HotkeyListener(
             on_press=self._on_hotkey_press,
@@ -208,7 +208,7 @@ class TrayApp(QObject):
         if self.state == State.PROCESSING:
             QMessageBox.warning(None, "稍等", "正在识别，等一下再重载。")
             return
-        self.recognizer = Recognizer(device=self.config.model_device)
+        self.recognizer = Recognizer(preset_key=self.config.model_preset, device=self.config.model_device)
         threading.Thread(target=self._load_model_async, daemon=True).start()
 
     def _toggle_autostart(self, enabled: bool) -> None:

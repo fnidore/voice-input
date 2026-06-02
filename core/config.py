@@ -20,8 +20,9 @@ HISTORY_FILE = DATA_DIR / "history.json"
 @dataclass
 class Config:
     # ---- 识别相关 ----
-    model_device: str = "cuda:0"          # cuda:0 / cpu
-    language: str = "zh"                  # auto / zh / en / yue / ja / ko
+    model_preset: str = "sensevoice"      # 见 core/presets.py PRESETS
+    model_device: str = "cuda:0"          # cuda:0 / cpu（cuda 不可用会自动回退 cpu）
+    language: str = "zh"                  # auto / zh / en / yue / ja / ko（仅多语种模型）
     hotwords: str = ""                    # 空格分隔的热词列表
 
     # ---- 录音相关 ----
