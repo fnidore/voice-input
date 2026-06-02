@@ -18,7 +18,15 @@ def _plist_path() -> Path:
 
 def _plist_content() -> str:
     project_dir = Path(__file__).resolve().parent.parent.parent
-    gui = project_dir / "voice_input_gui.py"
+    if getattr(sys, "frozen", False):
+        # PyInstaller / .app 打包：sys.executable 即可执行自身
+        prog_args = f"        <string>{sys.executable}</string>"
+        workdir = str(Path(sys.executable).parent)
+    else:
+        gui = project_dir / "voice_input_gui.py"
+        prog_args = (f"        <string>{sys.executable}</string>\n"
+                     f"        <string>{gui}</string>")
+        workdir = str(project_dir)
     return f"""<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
   "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -28,11 +36,10 @@ def _plist_content() -> str:
     <string>{LABEL}</string>
     <key>ProgramArguments</key>
     <array>
-        <string>{sys.executable}</string>
-        <string>{gui}</string>
+{prog_args}
     </array>
     <key>WorkingDirectory</key>
-    <string>{project_dir}</string>
+    <string>{workdir}</string>
     <key>RunAtLoad</key>
     <true/>
     <key>KeepAlive</key>

@@ -7,6 +7,8 @@
 
 from __future__ import annotations
 
+import sys
+
 import pytest
 
 from gui import autostart
@@ -119,3 +121,36 @@ class TestLinuxBackend:
 
         monkeypatch.setattr(linux_backend.subprocess, "run", fake_run)
         assert linux_backend.is_enabled() is True
+
+
+# --------------------------------------------------------------------------- #
+# 打包版(sys.frozen=True)：自启须指向可执行自身，不引用 python/.py/run_gui.sh
+# --------------------------------------------------------------------------- #
+class TestFrozenPackaging:
+    def test_linux_frozen_uses_executable(self, monkeypatch):
+        monkeypatch.setattr(sys, "frozen", True, raising=False)
+        monkeypatch.setattr(sys, "executable", "/opt/voice-input/voice-input", raising=False)
+        content = linux_backend._service_unit_content()
+        assert "/opt/voice-input/voice-input" in content
+        assert "run_gui.sh" not in content
+
+    def test_linux_source_uses_run_gui(self, monkeypatch):
+        monkeypatch.setattr(sys, "frozen", False, raising=False)
+        assert "run_gui.sh" in linux_backend._service_unit_content()
+
+    def test_windows_frozen_uses_executable(self, monkeypatch):
+        monkeypatch.setattr(sys, "frozen", True, raising=False)
+        monkeypatch.setattr(sys, "executable", r"C:\Apps\VoiceInput\voice-input.exe", raising=False)
+        cmd = win_backend._launch_command()
+        assert "voice-input.exe" in cmd
+        assert "voice_input_gui.py" not in cmd
+        assert "pythonw" not in cmd
+
+    def test_macos_frozen_uses_executable(self, monkeypatch):
+        monkeypatch.setattr(sys, "frozen", True, raising=False)
+        monkeypatch.setattr(
+            sys, "executable",
+            "/Applications/Voice Input.app/Contents/MacOS/voice-input", raising=False)
+        plist = mac_backend._plist_content()
+        assert "/Contents/MacOS/voice-input" in plist
+        assert "voice_input_gui.py" not in plist

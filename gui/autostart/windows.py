@@ -27,15 +27,18 @@ def _startup_file() -> Path:
 
 
 def _launch_command() -> str:
+    # chcp 65001 切到 UTF-8 代码页，避免中文路径在默认 GBK 代码页下乱码
+    if getattr(sys, "frozen", False):
+        # PyInstaller 打包：sys.executable 即 voice-input.exe，直接跑自身
+        return f'@echo off\r\nchcp 65001 >nul\r\nstart "" "{sys.executable}"\r\n'
+    # 源码版：pythonw 无控制台窗口；venv 的 Scripts 下通常没有 pythonw.exe，
+    # 回退到 base 解释器目录，避免开机自启时弹出黑色 CMD 窗口。
     project_dir = Path(__file__).resolve().parent.parent.parent
     gui = project_dir / "voice_input_gui.py"
-    # pythonw 无控制台窗口。venv 的 Scripts 下通常没有 pythonw.exe，
-    # 回退到 base 解释器目录，避免开机自启时弹出黑色 CMD 窗口。
     pyw = Path(sys.executable).with_name("pythonw.exe")
     if not pyw.exists():
         pyw = Path(sys.base_prefix) / "pythonw.exe"
     runner = str(pyw) if pyw.exists() else sys.executable
-    # chcp 65001 切到 UTF-8 代码页，避免中文路径在默认 GBK 代码页下乱码
     return f'@echo off\r\nchcp 65001 >nul\r\nstart "" "{runner}" "{gui}"\r\n'
 
 

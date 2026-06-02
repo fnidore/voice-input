@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import subprocess
+import sys
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
@@ -20,10 +21,14 @@ def _service_file() -> Path:
 
 
 def _service_unit_content() -> str:
-    """生成 service 文件内容，指向项目里的 run_gui.sh"""
-    # gui/autostart/linux.py -> 项目根
-    project_dir = Path(__file__).resolve().parent.parent.parent
-    run_script = project_dir / "run_gui.sh"
+    """生成 service 文件内容。打包版直接跑可执行自身，源码版跑 run_gui.sh。"""
+    if getattr(sys, "frozen", False):
+        # PyInstaller 打包：sys.executable 即 /opt/voice-input/voice-input
+        exec_start = f'"{sys.executable}"'
+    else:
+        # 源码版：gui/autostart/linux.py -> 项目根 run_gui.sh
+        project_dir = Path(__file__).resolve().parent.parent.parent
+        exec_start = f'/bin/bash "{project_dir / "run_gui.sh"}"'
     return f"""[Unit]
 Description=Voice Input (SenseVoice global voice dictation)
 After=graphical-session.target sound.target
@@ -31,7 +36,7 @@ PartOf=graphical-session.target
 
 [Service]
 Type=simple
-ExecStart=/bin/bash "{run_script}"
+ExecStart={exec_start}
 Restart=on-failure
 RestartSec=5
 # 让 GUI 能连上 X server
