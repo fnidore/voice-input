@@ -40,7 +40,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        # Linux 用 ubuntu-22.04（glibc 2.35）打包：glibc 只向后兼容，
+        # 在旧系统打的包能在 22.04 及更新系统跑；用 ubuntu-latest(24.04)
+        # 打出的包链接 GLIBC_2.38/2.39，会在 22.04 上加载失败。
+        os: [ubuntu-22.04, windows-latest, macos-latest]
     steps:
       - uses: actions/checkout@v4
 
