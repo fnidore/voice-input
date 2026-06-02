@@ -326,7 +326,8 @@ class SettingsWindow(QDialog):
         hint = QLabel(
             "热词列表（空格分隔），让 SenseVoice 更倾向于识别这些词。\n"
             "例如: 涛涛鱼 SenseVoice 机械臂 强化学习\n"
-            "热词过多会影响识别速度，建议 < 50 个。"
+            "热词过多会影响识别速度，建议 < 50 个。\n"
+            "💡 中文热词请从别处复制后按 Ctrl+V 粘贴（打包版直接键盘输入中文受输入法限制）。"
         )
         hint.setWordWrap(True)
         v.addWidget(hint)
@@ -337,6 +338,7 @@ class SettingsWindow(QDialog):
         v.addWidget(self.lbl_hotword_note)
 
         self.txt_hotwords = QPlainTextEdit()
+        self.txt_hotwords.setPlaceholderText("中文热词请从别处复制后 Ctrl+V 粘贴")
         self.txt_hotwords.setPlainText(self.config.hotwords)
         v.addWidget(self.txt_hotwords, 1)
         return w
