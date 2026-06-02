@@ -14,10 +14,12 @@ from PySide6.QtWidgets import (
     QComboBox,
     QDialog,
     QDoubleSpinBox,
+    QFileDialog,
     QFormLayout,
     QGroupBox,
     QHBoxLayout,
     QLabel,
+    QLineEdit,
     QListWidget,
     QListWidgetItem,
     QMessageBox,
@@ -93,6 +95,7 @@ class SettingsWindow(QDialog):
     def _build_basic_tab(self) -> QWidget:
         w = QWidget()
         form = QFormLayout(w)
+        self._basic_form = form
 
         # 识别模型（预设）
         self.cmb_preset = QComboBox()
@@ -117,6 +120,29 @@ class SettingsWindow(QDialog):
         self.lbl_model_path.setTextInteractionFlags(Qt.TextSelectableByMouse)
         self.lbl_model_path.setStyleSheet("color:#6b7890; font-size:11px;")
         form.addRow("模型路径:", self.lbl_model_path)
+
+        # 自定义模型：输入框（ID 或本地目录）+ 浏览（仅选「自定义模型」时显示）
+        self.txt_custom_path = QLineEdit(self.config.custom_model_path)
+        self.txt_custom_path.setPlaceholderText("ModelScope 模型 ID（如 iic/xxx）或 本地模型目录绝对路径")
+        self.txt_custom_path.textChanged.connect(self._on_preset_changed)
+        btn_browse = QPushButton("浏览…")
+        btn_browse.clicked.connect(self._browse_model_dir)
+        custom_row = QHBoxLayout()
+        custom_row.addWidget(self.txt_custom_path, 1)
+        custom_row.addWidget(btn_browse)
+        self.custom_path_widget = self._wrap_layout(custom_row)
+        form.addRow("自定义模型:", self.custom_path_widget)
+
+        # 帮助：去哪下模型 / 放哪里
+        self.lbl_model_help = QLabel(
+            "📥 默认模型自动下载到 <b>~/.cache/modelscope/hub/models/</b><br>"
+            "想用其它模型：到 <b>modelscope.cn</b> 或 <b>huggingface.co</b> 下载 FunASR 兼容模型，"
+            "选「📁 自定义模型」填<b>模型 ID</b>（自动下载）或<b>本地目录路径</b>。"
+        )
+        self.lbl_model_help.setWordWrap(True)
+        self.lbl_model_help.setOpenExternalLinks(True)
+        self.lbl_model_help.setStyleSheet("color:#6b7890; font-size:11px;")
+        form.addRow("", self.lbl_model_help)
 
         # 模型设备
         self.cmb_device = QComboBox()
@@ -182,14 +208,34 @@ class SettingsWindow(QDialog):
         return w
 
     def _on_preset_changed(self) -> None:
-        """模型预设变化：更新说明、本地路径、语言/热词可用性提示。"""
+        """模型预设变化：更新说明、本地路径、自定义行显隐、语言/热词可用性提示。"""
         p = get_preset(self.cmb_preset.currentData())
         self.lbl_preset_desc.setText("💡 " + p.desc)
-        path = model_cache_path(p)
-        mark = "✓ 已下载" if path.exists() else "· 首次选用会自动联网下载（约 1GB）"
-        self.lbl_model_path.setText(f"{path}\n{mark}")
+        is_custom = p.key == "custom"
+        # 自定义路径输入行仅在「自定义模型」时显示
+        if hasattr(self, "custom_path_widget"):
+            self._basic_form.setRowVisible(self.custom_path_widget, is_custom)
+        # 模型路径显示
+        if is_custom:
+            cur = self.txt_custom_path.text().strip()
+            self.lbl_model_path.setText(cur if cur else "（请在上方填 模型 ID 或本地目录）")
+        else:
+            path = model_cache_path(p)
+            mark = "✓ 已下载" if path.exists() else "· 首次选用会自动联网下载（约 1GB）"
+            self.lbl_model_path.setText(f"{path}\n{mark}")
         # 识别语言仅多语种模型可用
         self.cmb_lang.setEnabled(p.accepts_language)
+
+    def _browse_model_dir(self) -> None:
+        """选本地模型目录，并自动切到「自定义模型」。"""
+        d = QFileDialog.getExistingDirectory(self, "选择模型目录")
+        if not d:
+            return
+        self.txt_custom_path.setText(d)
+        for i in range(self.cmb_preset.count()):
+            if self.cmb_preset.itemData(i) == "custom":
+                self.cmb_preset.setCurrentIndex(i)
+                break
         # 热词 tab 动态提示
         if hasattr(self, "lbl_hotword_note"):
             if p.accepts_hotword:
@@ -365,6 +411,7 @@ class SettingsWindow(QDialog):
     def _save(self) -> None:
         cfg = self.config
         cfg.model_preset = self.cmb_preset.currentData()
+        cfg.custom_model_path = self.txt_custom_path.text().strip()
         cfg.model_device = self.cmb_device.currentText()
         cfg.language = self.cmb_lang.currentText()
         cfg.input_method = "paste" if self.cmb_input_method.currentIndex() == 0 else "type"

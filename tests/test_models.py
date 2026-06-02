@@ -69,6 +69,27 @@ def test_empty_hotword_not_passed_even_if_supported():
     assert "hotword" not in kw
 
 
+# ---------- 自定义模型 ----------
+
+def test_custom_preset_uses_custom_path():
+    r = Recognizer(preset_key="custom", device="cpu", custom_model_path="/my/model")
+    assert r.model_id == "/my/model"
+
+
+def test_non_custom_ignores_custom_path():
+    r = Recognizer(preset_key="sensevoice", device="cpu", custom_model_path="/ignored")
+    assert r.model_id == "iic/SenseVoiceSmall"
+
+
+def test_custom_preset_conservative_params():
+    r = Recognizer(preset_key="custom", device="cpu", custom_model_path="/m")
+    fake = _FakeModel()
+    r.model = fake
+    r.recognize(np.zeros(16000, dtype=np.float32), language="zh", hotwords="x")
+    assert "language" not in fake.last_kwargs   # 保守：不传
+    assert "hotword" not in fake.last_kwargs
+
+
 # ---------- 设备回退 ----------
 
 def test_resolve_device_cpu_stays_cpu():

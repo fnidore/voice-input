@@ -37,20 +37,28 @@ def resolve_device(device: str) -> str:
 
 
 class Recognizer:
-    def __init__(self, preset_key: str = DEFAULT_PRESET, device: str = "cpu") -> None:
+    def __init__(self, preset_key: str = DEFAULT_PRESET, device: str = "cpu",
+                 custom_model_path: str = "") -> None:
         self.preset = get_preset(preset_key)
         self.device = device
+        # 自定义预设用用户填的 ID/路径，否则用预设内置 model_id
+        self.model_id = (
+            custom_model_path.strip() if self.preset.key == "custom"
+            else self.preset.model_id
+        )
         self.model = None  # 延迟加载
 
     def load(self) -> None:
         if self.model is not None:
             return
+        if not self.model_id:
+            raise ValueError("自定义模型路径为空，请在设置里填 ModelScope ID 或本地模型目录")
         self.device = resolve_device(self.device)
         from funasr import AutoModel  # 延迟 import 避免启动慢
-        logger.info("loading %s on %s ...", self.preset.model_id, self.device)
+        logger.info("loading %s on %s ...", self.model_id, self.device)
         t0 = time.time()
         self.model = AutoModel(
-            model=self.preset.model_id,
+            model=self.model_id,
             device=self.device,
             disable_update=True,
             trust_remote_code=False,

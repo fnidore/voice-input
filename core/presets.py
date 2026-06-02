@@ -68,9 +68,23 @@ PRESETS: dict[str, ModelPreset] = {
         accepts_hotword=True,
         accepts_itn=True,
     ),
+    # 自定义模型：model_id 运行时由 config.custom_model_path 提供（ModelScope ID 或本地目录）
+    "custom": ModelPreset(
+        key="custom",
+        label="📁 自定义模型（ID 或本地路径）",
+        model_id="",  # 占位，实际取 config.custom_model_path
+        desc="填 ModelScope 模型 ID（自动下载）或本地模型目录路径。按通用方式调用，"
+             "多语种/热词可能不生效。",
+        load_kwargs={},
+        gen_kwargs={"batch_size_s": 60},
+        accepts_language=False,
+        accepts_hotword=False,
+        accepts_itn=True,
+    ),
 }
 
 DEFAULT_PRESET = "sensevoice"
+CUSTOM_PRESET = "custom"
 
 
 def get_preset(key: str) -> ModelPreset:
