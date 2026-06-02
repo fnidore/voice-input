@@ -1,9 +1,15 @@
-# 🎤 Voice Input · 全局语音输入
+<p align="center">
+  <img src="assets/icon.png" alt="Voice Input" width="150">
+</p>
 
-> 按住快捷键说话，松开就把识别结果打到当前光标位置。中英文混说、自动加标点。
-> SenseVoice 推理 + PySide6 托盘 GUI。主攻 Linux/X11，并提供 Windows / macOS 原生安装包。
+<h1 align="center">🎤 Voice Input · 全局语音输入</h1>
 
-<p>
+<p align="center">
+  按住快捷键说话，松开就把识别结果打到当前光标位置 · 中英文混说、自动加标点<br>
+  SenseVoice 推理 + PySide6 托盘 GUI · 主攻 Linux/X11，并提供 Windows / macOS 原生安装包
+</p>
+
+<p align="center">
   <img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License: MIT">
   <img src="https://img.shields.io/badge/Python-3.10-blue.svg" alt="Python 3.10">
   <img src="https://img.shields.io/badge/Platform-Linux%20%7C%20Windows%20%7C%20macOS-orange.svg" alt="Platform Linux | Windows | macOS">
