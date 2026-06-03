@@ -1,9 +1,12 @@
-"""动态生成托盘图标（三态：待机/录音/识别中/错误）
+"""动态生成托盘图标（清新简约浅色版）。
 
-设计要点:
-1. 圆形深色背景 + 内部麦克风，扁平化现代风
-2. 保存为 PNG 文件后用 QIcon(filepath) 创建
-   —— GNOME AppIndicator 必须文件路径才能稳定显示，QPixmap 内存图会被替换
+三/多态：idle 待机 / recording 录音 / processing 识别中 / error 错误 / paused 暂停。
+造型：浅色圆角磁贴 + 线性麦克风（状态变色）+ 右上角状态点。
+
+保存为 PNG 文件后用 QIcon(filepath) 创建
+—— GNOME AppIndicator 必须文件路径才能稳定显示。
+
+公开 API 与旧版一致：icon_idle/recording/processing/error/paused + regenerate_all。
 """
 
 from __future__ import annotations
@@ -11,119 +14,104 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from PIL import Image, ImageDraw, ImageFilter
+from PIL import Image, ImageDraw
 from PySide6.QtGui import QIcon
 
-ICON_SIZE = 256  # 高分辨率渲染，托盘缩放后更清晰
-S = ICON_SIZE / 1024.0  # 复用 app 图标的 1024 画布坐标，按此系数缩放，造型保持一致
+try:
+    from .style import PALETTE
+except Exception:  # 允许脱离包单测
+    PALETTE = {"rec": "#ef6c54", "proc": "#e8a13a", "error": "#e0584f", "idle": "#99a0b0",
+               "surface": "#ffffff", "border_2": "#dde0e7", "bg": "#f1f4f8"}
 
-# 缓存目录
+ICON_SIZE = 256
+S = ICON_SIZE / 1024.0
+
 CACHE_DIR = Path(
     os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache")
 ) / "voice-input" / "icons"
 
-# 深色圆底（呼应 app 图标的深蓝近黑霓虹风）
-BG_COLOR = (10, 15, 31)          # #0a0f1f 深蓝近黑
-BG_OUTLINE = (34, 211, 238)      # 青色描边（半透明叠加）
-GRILLE_COLOR = (6, 16, 31)       # 话筒音格线（深色镂空感）
 
-# 状态 → 麦克风霓虹主色
+def _rgb(hex_str: str) -> tuple[int, int, int]:
+    h = hex_str.lstrip("#")
+    return tuple(int(h[i:i + 2], 16) for i in (0, 2, 4))
+
+
+# 浅色磁贴
+TILE_FILL = _rgb(PALETTE["surface"])      # 白
+TILE_EDGE = _rgb(PALETTE["border_2"])     # 浅灰描边
+GRILLE = (210, 216, 226)                  # 话筒音格线（极浅）
+
+# 状态 → 麦克风主色
 COLORS = {
-    "idle":       (34, 211, 238),    # 青 cyan —— 待机
-    "recording":  (255, 59, 107),    # 玫红 —— 录音
-    "processing": (251, 191, 36),    # 琥珀黄 —— 识别中
-    "error":      (239, 68, 68),     # 红 —— 错误
-    "paused":     (148, 163, 184),   # 灰 —— 暂停
+    "idle":       _rgb(PALETTE["idle"]),    # 灰
+    "recording":  _rgb(PALETTE["rec"]),     # 珊瑚
+    "processing": _rgb(PALETTE["proc"]),    # 琥珀
+    "error":      _rgb(PALETTE["error"]),   # 红
+    "paused":     (192, 197, 208),          # 浅灰
 }
+# 哪些状态显示右上角状态点
+DOT_STATES = {"recording", "processing", "error"}
 
 
 def _sx(v: float) -> float:
-    """1024 画布坐标 → 当前 ICON_SIZE 坐标。"""
     return v * S
 
 
-def _mic_layer(color: tuple[int, int, int]) -> Image.Image:
-    """在透明层上画麦克风造型（与 app 图标同款几何），返回 RGBA 图。"""
-    layer = Image.new("RGBA", (ICON_SIZE, ICON_SIZE), (0, 0, 0, 0))
-    d = ImageDraw.Draw(layer)
+def _draw_mic(d: ImageDraw.ImageDraw, color: tuple[int, int, int]) -> None:
+    """线性麦克风（与 app 图标同款几何，描边版）。"""
     c = color + (255,)
-    w = max(2, round(34 * S))  # 支架 / 杆 / 座线宽
+    w = max(2, round(34 * S))
 
-    # 话筒头胶囊
+    # 话筒头胶囊（描边）
     d.rounded_rectangle(
-        (_sx(404), _sx(228), _sx(620), _sx(602)), radius=_sx(108), fill=c
+        (_sx(404), _sx(228), _sx(620), _sx(602)), radius=_sx(108),
+        outline=c, width=w,
     )
-    # 支架 U 弧（下半圆）+ 两端竖线
+    # 支架 U 弧 + 两端竖线
     d.arc((_sx(306), _sx(288), _sx(718), _sx(700)), start=0, end=180, fill=c, width=w)
     d.line((_sx(306), _sx(454), _sx(306), _sx(494)), fill=c, width=w)
     d.line((_sx(718), _sx(454), _sx(718), _sx(494)), fill=c, width=w)
     # 底杆 + 底座
     d.line((_sx(512), _sx(700), _sx(512), _sx(818)), fill=c, width=w)
     d.line((_sx(396), _sx(830), _sx(628), _sx(830)), fill=c, width=w)
-    # grille 音格线
+    # 音格线（浅）
     gw = max(1, round(15 * S))
     for gy in (322, 378, 434):
-        d.line((_sx(436), _sx(gy), _sx(588), _sx(gy)), fill=GRILLE_COLOR + (190,), width=gw)
-    return layer
+        d.line((_sx(452), _sx(gy), _sx(572), _sx(gy)), fill=GRILLE + (255,), width=gw)
 
 
-def _draw_microphone(
-    state: str,
-    bg_color: tuple[int, int, int] = BG_COLOR,
-) -> Image.Image:
-    """绘制托盘图标：深色圆底 + 霓虹麦克风 + 辉光，状态变色。"""
+def _draw_icon(state: str) -> Image.Image:
     mic_color = COLORS[state]
     img = Image.new("RGBA", (ICON_SIZE, ICON_SIZE), (0, 0, 0, 0))
     d = ImageDraw.Draw(img)
 
-    pad = max(2, round(ICON_SIZE * 0.03))
-    # 深色圆底 + 青色细描边
-    d.ellipse(
-        (pad, pad, ICON_SIZE - pad, ICON_SIZE - pad),
-        fill=bg_color + (255,),
-        outline=BG_OUTLINE + (90,),
+    pad = max(2, round(ICON_SIZE * 0.045))
+    radius = round(ICON_SIZE * 0.27)
+    # 浅色圆角磁贴
+    d.rounded_rectangle(
+        (pad, pad, ICON_SIZE - pad, ICON_SIZE - pad), radius=radius,
+        fill=TILE_FILL + (255,), outline=TILE_EDGE + (255,),
         width=max(1, round(ICON_SIZE * 0.012)),
     )
 
-    # 录音态：外圈高亮环
-    if state == "recording":
-        r = max(2, round(ICON_SIZE * 0.022))
-        d.ellipse(
-            (pad - r, pad - r, ICON_SIZE - pad + r, ICON_SIZE - pad + r),
-            outline=mic_color + (210,),
-            width=r,
-        )
+    _draw_mic(d, mic_color)
 
-    # 麦克风 + 霓虹辉光（高斯模糊叠加，呼应 app 图标）
-    mic = _mic_layer(mic_color)
-    glow = mic.filter(ImageFilter.GaussianBlur(max(2, round(ICON_SIZE / 16))))
-    gr, gg, gb, ga = glow.split()
-    ga = ga.point(lambda v: min(255, int(v * 1.8)))
-    glow = Image.merge("RGBA", (gr, gg, gb, ga))
-    img = Image.alpha_composite(img, glow)
-    img = Image.alpha_composite(img, mic)
-
-    d = ImageDraw.Draw(img)
-    # 识别中：右下三个小圆点
-    if state == "processing":
-        dr = round(ICON_SIZE * 0.030)
-        dy = round(ICON_SIZE * 0.80)
-        for fx in (0.58, 0.69, 0.80):
-            x = round(ICON_SIZE * fx)
-            d.ellipse((x - dr, dy - dr, x + dr, dy + dr), fill=mic_color + (255,))
-
-    # 错误：右下红色感叹号徽标
-    if state == "error":
-        ex, ey = round(ICON_SIZE * 0.75), round(ICON_SIZE * 0.75)
-        rr = round(ICON_SIZE * 0.12)
-        d.ellipse((ex - rr, ey - rr, ex + rr, ey + rr), fill=(239, 68, 68, 255))
-        lw = max(2, round(ICON_SIZE * 0.024))
-        d.line((ex, ey - round(rr * 0.5), ex, ey + round(rr * 0.12)),
-               fill=(255, 255, 255, 255), width=lw)
-        dotr = max(1, round(lw * 0.55))
-        dy2 = ey + round(rr * 0.42)
-        d.ellipse((ex - dotr, dy2 - dotr, ex + dotr, dy2 + dotr),
-                  fill=(255, 255, 255, 255))
+    # 右上角状态点（带磁贴底色的描边环，像“突出”在角上）
+    if state in DOT_STATES:
+        cx, cy = round(ICON_SIZE * 0.78), round(ICON_SIZE * 0.22)
+        r = round(ICON_SIZE * 0.105)
+        ring = max(2, round(ICON_SIZE * 0.03))
+        d.ellipse((cx - r - ring, cy - r - ring, cx + r + ring, cy + r + ring),
+                  fill=TILE_FILL + (255,))
+        d.ellipse((cx - r, cy - r, cx + r, cy + r), fill=mic_color + (255,))
+        # error 状态：点内画白色感叹号
+        if state == "error":
+            lw = max(2, round(ICON_SIZE * 0.022))
+            d.line((cx, cy - round(r * 0.42), cx, cy + round(r * 0.12)),
+                   fill=(255, 255, 255, 255), width=lw)
+            dot = max(1, round(lw * 0.6))
+            dy = cy + round(r * 0.46)
+            d.ellipse((cx - dot, dy - dot, cx + dot, dy + dot), fill=(255, 255, 255, 255))
 
     return img
 
@@ -132,17 +120,11 @@ _ICON_CACHE: dict[str, QIcon] = {}
 
 
 def _get_icon(state: str) -> QIcon:
-    """生成/缓存图标，返回 QIcon(文件路径)"""
     if state in _ICON_CACHE:
         return _ICON_CACHE[state]
-
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
     path = CACHE_DIR / f"voice-input-{state}.png"
-
-    # 缓存文件不存在或我们要重新生成
-    img = _draw_microphone(state)
-    img.save(path, format="PNG")
-
+    _draw_icon(state).save(path, format="PNG")
     ic = QIcon(str(path))
     _ICON_CACHE[state] = ic
     return ic
@@ -169,7 +151,7 @@ def icon_paused() -> QIcon:
 
 
 def regenerate_all() -> None:
-    """强制重新生成所有图标（调试用）"""
+    """强制重新生成所有图标（调试用）。"""
     _ICON_CACHE.clear()
     for state in COLORS:
         _get_icon(state)

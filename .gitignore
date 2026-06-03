@@ -39,3 +39,6 @@ config.local.json
 
 # ===== 图标中间位图（由 assets/render_icons.py 生成；只提交 .ico/.icns/icon.png）=====
 assets/icon_[0-9]*.png
+
+# ===== 临时下载的主题/资源包 =====
+*.zip
