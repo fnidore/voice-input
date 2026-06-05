@@ -110,6 +110,7 @@ class SettingsWindow(QDialog):
     configChanged = Signal(Config)
     autostartToggled = Signal(bool)
     reloadModelRequested = Signal()
+    hudResetRequested = Signal()   # 录音浮窗「恢复默认位置」
 
     def __init__(self, config: Config, history: History, parent=None) -> None:
         super().__init__(parent)
@@ -425,8 +426,22 @@ class SettingsWindow(QDialog):
 
         self.chk_hud = ToggleSwitch()
         self.chk_hud.setChecked(self.config.show_hud)
-        card3.add(toggle_row("录音浮窗", "说话时屏幕底部弹出胶囊状态浮窗（聆听/识别/已粘贴）",
+        card3.add(toggle_row("录音浮窗", "可按住拖到任意位置（自动记忆）；默认屏幕底部居中弹出",
                              self.chk_hud))
+
+        # 恢复默认位置（开关打开才显示）
+        hud_row = QHBoxLayout()
+        hud_row.setSpacing(14)
+        btn_hud_reset = QPushButton("恢复默认位置")
+        btn_hud_reset.setProperty("ghost", True)
+        btn_hud_reset.setCursor(Qt.PointingHandCursor)
+        btn_hud_reset.clicked.connect(self.hudResetRequested.emit)
+        hud_row.addWidget(btn_hud_reset)
+        hud_row.addWidget(hint_label("浮窗拖丢了？点这里回到屏幕底部居中"), 1)
+        self.hud_row_widget = self._wrap_layout(hud_row)
+        self.hud_row_widget.setVisible(self.config.show_hud)
+        self.chk_hud.toggled.connect(self.hud_row_widget.setVisible)
+        card3.add(self.hud_row_widget)
 
         card3.divider()
 

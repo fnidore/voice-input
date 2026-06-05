@@ -21,6 +21,7 @@ class BarMeter(QWidget):
     """横排竖条电平表。set_level(0~1) 驱动；无电平时显示灰色短条。"""
 
     levelChanged = Signal(float)
+    _levelIn = Signal(float)   # set_level 跨线程入口（音频回调线程 → 队列 → GUI 线程）
 
     def __init__(self, bars: int = 22, parent=None) -> None:
         super().__init__(parent)
@@ -33,13 +34,22 @@ class BarMeter(QWidget):
         self._timer = QTimer(self)
         self._timer.timeout.connect(self._tick)
         self._timer.setInterval(90)
+        self._levelIn.connect(self._apply_level)
 
     # ---- 旧 API 兼容 ----
     def set_level(self, level: float) -> None:
-        level = max(0.0, min(1.0, float(level)))
+        """线程安全：可在音频回调线程直接调用（QTimer 不允许跨线程启动，
+        故只发信号，状态更新经队列回 GUI 线程执行）。"""
+        self._levelIn.emit(max(0.0, min(1.0, float(level))))
+
+    def _apply_level(self, level: float) -> None:
+        crossed = (self._level <= 0.02) != (level <= 0.02)
         self._level = level
         if level > 0.02 and not self._timer.isActive():
             self._timer.start()
+            self._tick()        # 立即出第一帧，不等 90ms
+        elif crossed:
+            self.update()       # 激活/待机颜色即时切换
         self.levelChanged.emit(level)
 
     def _tick(self) -> None:

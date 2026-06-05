@@ -197,6 +197,7 @@ class TrayApp(QObject):
             self.settings_window = SettingsWindow(self.config, self.history)
             self.settings_window.configChanged.connect(self._apply_config)
             self.settings_window.autostartToggled.connect(self._toggle_autostart)
+            self.settings_window.hudResetRequested.connect(self.hud.reset_position)
             self.recognized.connect(lambda _: self.settings_window.refresh_history())
         self.settings_window.show()
         self.settings_window.raise_()

@@ -1,6 +1,6 @@
 """录音胶囊 HUD（设计稿 floating.jsx / floating.css 同款）。
 
-屏幕底部居中弹出，不抢焦点、不挡鼠标：
+默认屏幕底部居中弹出，可按住拖到任意位置（记忆上次位置），不抢焦点：
 - 正在聆听：珊瑚色话筒徽章 + 扩散光环 + 实时波形 + 计时
 - 识别中：琥珀色 + 三个跳动圆点
 - 已粘贴：蓝色 ✓ + 「已注入到光标位置」，1.5s 后淡出
@@ -17,7 +17,8 @@ from __future__ import annotations
 import math
 
 from PySide6.QtCore import (
-    QEasingCurve, QPoint, QPropertyAnimation, QRectF, Qt, QTimer,
+    QEasingCurve, QPoint, QPropertyAnimation, QRect, QRectF, QSettings,
+    Qt, QTimer,
 )
 from PySide6.QtGui import QColor, QGuiApplication, QPainter, QPen
 from PySide6.QtWidgets import (
@@ -38,6 +39,7 @@ _STATES = {
 
 _MARGIN_BOTTOM = 48
 _SLIDE = 14
+_POS_KEY = "hud_pos"   # QSettings("VoiceInput","ui") 中记忆的拖动位置
 
 
 class _GlyphBadge(QWidget):
@@ -144,12 +146,14 @@ class RecordingHUD(QWidget):
         )
         self.setAttribute(Qt.WA_TranslucentBackground)
         self.setAttribute(Qt.WA_ShowWithoutActivating)
-        self.setAttribute(Qt.WA_TransparentForMouseEvents)
         self.setFixedSize(320, 78)
+        self.setCursor(Qt.OpenHandCursor)   # 暗示可拖动
+        self.setFocusPolicy(Qt.NoFocus)     # 拖动也绝不抢键盘焦点（粘贴依赖光标所在输入框）
 
         self._state = "hidden"
         self._hotkey = "F4"
         self._seconds = 0
+        self._drag_off: QPoint | None = None
 
         # ---- 布局：glyph | mid(上波形/点/sub + 下 label) | right(计时) ----
         root = QHBoxLayout(self)
@@ -214,6 +218,34 @@ class RecordingHUD(QWidget):
         self._show_state("done")
         self._hold_timer.start(1500)
 
+    def reset_position(self) -> None:
+        """清除记忆位置，回到默认底部居中（设置窗口「恢复默认位置」）。"""
+        QSettings("VoiceInput", "ui").remove(_POS_KEY)
+        if self.isVisible():
+            self.move(self._default_pos())
+
+    # ---------- 拖动（位置记忆到 QSettings） ----------
+    def mousePressEvent(self, ev) -> None:  # noqa: N802
+        if ev.button() == Qt.LeftButton and self._state != "hidden":
+            # 淡出中不开始拖动（finished→hide 拦不住，胶囊本来就该消失了）
+            if self._anim is not None:
+                self._anim.stop()   # 滑入动画也在动 pos，先停
+            self._drag_off = ev.globalPosition().toPoint() - self.pos()
+            self.setCursor(Qt.ClosedHandCursor)
+            ev.accept()
+
+    def mouseMoveEvent(self, ev) -> None:  # noqa: N802
+        if self._drag_off is not None:
+            self.move(ev.globalPosition().toPoint() - self._drag_off)
+            ev.accept()
+
+    def mouseReleaseEvent(self, ev) -> None:  # noqa: N802
+        if ev.button() == Qt.LeftButton and self._drag_off is not None:
+            self._drag_off = None
+            self.setCursor(Qt.OpenHandCursor)
+            QSettings("VoiceInput", "ui").setValue(_POS_KEY, self.pos())
+            ev.accept()
+
     # ---------- 状态切换 ----------
     def _show_state(self, state: str) -> None:
         m = _STATES[state]
@@ -274,7 +306,7 @@ class RecordingHUD(QWidget):
         self._timer_lbl.setText(f"{self._seconds // 60}:{self._seconds % 60:02d}")
 
     # ---------- 进出场动画 ----------
-    def _target_pos(self) -> QPoint:
+    def _default_pos(self) -> QPoint:
         screen = QGuiApplication.primaryScreen()
         geo = screen.availableGeometry() if screen else None
         if geo is None:
@@ -283,6 +315,18 @@ class RecordingHUD(QWidget):
             geo.center().x() - self.width() // 2,
             geo.bottom() - self.height() - _MARGIN_BOTTOM,
         )
+
+    def _target_pos(self) -> QPoint:
+        """优先用上次拖动记忆的位置；坐标已不在任何屏幕上（换显示器/改分辨率）则回默认。"""
+        saved = QSettings("VoiceInput", "ui").value(_POS_KEY)
+        if isinstance(saved, QPoint) and self._on_any_screen(saved):
+            return saved
+        return self._default_pos()
+
+    def _on_any_screen(self, pos: QPoint) -> bool:
+        probe = QRect(pos, self.size())
+        return any(s.availableGeometry().intersects(probe)
+                   for s in QGuiApplication.screens())
 
     def _fade_in(self) -> None:
         pos = self._target_pos()
@@ -303,6 +347,7 @@ class RecordingHUD(QWidget):
     def _animate(self, opacity: float, pos: QPoint, on_done) -> None:
         if self._anim is not None:
             self._anim.stop()
+            self._anim.deleteLater()   # 防止旧动画对象在常驻进程里累积
         anim = QPropertyAnimation(self, b"pos", self)
         anim.setDuration(180)
         anim.setEasingCurve(QEasingCurve.OutCubic)
