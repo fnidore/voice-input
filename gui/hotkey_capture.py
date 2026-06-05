@@ -35,9 +35,9 @@ class HotkeyCaptureButton(QPushButton):
 
     def _update_label(self) -> None:
         if self._capturing:
-            self.setText("⌨️  按下你想要的键...（按 Esc 取消）")
+            self.setText("⌨️ 按下你想要的键…（Esc 取消）")
         else:
-            self.setText(f"当前快捷键: {self._spec}    （点击重新捕获）")
+            self.setText("点击重新捕获")
 
     def _start_capture(self) -> None:
         if self._capturing:

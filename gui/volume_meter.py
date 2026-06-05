@@ -1,77 +1,79 @@
-"""实时音量条 widget（清新简约浅色版）：圆角浅底 + 蓝色填充 + peak hold。"""
+"""实时音量条（设计稿 .vmeter 同款）：竖向分段小条，中间高两边低。
+
+- BarMeter: 通用波形条控件（设置窗口麦克风电平 / 录音 HUD 共用）
+- VolumeMeter = BarMeter 别名，保持旧 API（set_level / levelChanged）
+"""
 
 from __future__ import annotations
 
-from PySide6.QtCore import QRectF, Qt, Signal
-from PySide6.QtGui import QColor, QLinearGradient, QPainter, QPen
+import random
+
+from PySide6.QtCore import QRectF, Qt, QTimer, Signal
+from PySide6.QtGui import QColor, QPainter
 from PySide6.QtWidgets import QWidget
 
-try:
-    from .style import PALETTE
-except Exception:
-    PALETTE = {"surface_3": "#eef0f3", "border": "#e8eaef",
-               "accent": "#5b8def", "accent_press": "#3f72db"}
+from .style import palette
+
+_IDLE_H = 0.10   # 待机时小条高度占比
 
 
-def _rgb(hex_str: str) -> tuple[int, int, int]:
-    h = hex_str.lstrip("#")
-    return tuple(int(h[i:i + 2], 16) for i in (0, 2, 4))
-
-
-class VolumeMeter(QWidget):
-    """横向电平表（peak 显示）。"""
+class BarMeter(QWidget):
+    """横排竖条电平表。set_level(0~1) 驱动；无电平时显示灰色短条。"""
 
     levelChanged = Signal(float)
 
-    def __init__(self, parent=None) -> None:
+    def __init__(self, bars: int = 22, parent=None) -> None:
         super().__init__(parent)
-        self.setMinimumHeight(24)
-        self.setMinimumWidth(180)
+        self._bars = bars
         self._level = 0.0
-        self._peak_hold = 0.0
-        self._hold_decay = 0.985
+        self._heights = [_IDLE_H] * bars
+        self.setMinimumHeight(26)
+        self.setMinimumWidth(140)
+        # 90ms 抖动刷新（与设计稿动画节奏一致）
+        self._timer = QTimer(self)
+        self._timer.timeout.connect(self._tick)
+        self._timer.setInterval(90)
 
+    # ---- 旧 API 兼容 ----
     def set_level(self, level: float) -> None:
         level = max(0.0, min(1.0, float(level)))
         self._level = level
-        if level > self._peak_hold:
-            self._peak_hold = level
-        else:
-            self._peak_hold *= self._hold_decay
+        if level > 0.02 and not self._timer.isActive():
+            self._timer.start()
         self.levelChanged.emit(level)
+
+    def _tick(self) -> None:
+        if self._level <= 0.02:
+            self._timer.stop()
+            self._heights = [_IDLE_H] * self._bars
+        else:
+            amp = 0.25 + 0.75 * self._level
+            n = self._bars
+            self._heights = [
+                max(0.08, min(1.0,
+                    (1 - abs(i - n / 2) / (n / 2)) * (0.35 + random.random() * 0.65) * amp))
+                for i in range(n)
+            ]
         self.update()
 
-    def paintEvent(self, _ev) -> None:
+    def paintEvent(self, _ev) -> None:  # noqa: N802
+        P = palette()
         p = QPainter(self)
         p.setRenderHint(QPainter.Antialiasing)
-        rect = QRectF(self.rect()).adjusted(1, 1, -1, -1)
-        rad = rect.height() / 2
-
-        # 圆角浅底
         p.setPen(Qt.NoPen)
-        p.setBrush(QColor(*_rgb(PALETTE["surface_3"])))
-        p.drawRoundedRect(rect, rad, rad)
-
-        # 蓝色填充（浅→深）
-        if self._level > 0:
-            accent = _rgb(PALETTE["accent"])
-            light = tuple(min(255, c + 40) for c in accent)
-            level_w = max(rect.height(), rect.width() * self._level)
-            fill = QRectF(rect.left(), rect.top(), level_w, rect.height())
-            grad = QLinearGradient(fill.topLeft(), fill.topRight())
-            grad.setColorAt(0.0, QColor(*light))
-            grad.setColorAt(1.0, QColor(*accent))
-            p.setBrush(grad)
-            p.drawRoundedRect(fill, rad, rad)
-
-        # peak hold 竖线
-        if self._peak_hold > 0.02:
-            peak_x = rect.left() + rect.width() * self._peak_hold
-            p.setPen(QPen(QColor(*_rgb(PALETTE["accent_press"])), 2))
-            p.drawLine(int(peak_x), int(rect.top() + 3), int(peak_x), int(rect.bottom() - 3))
-
-        # 描边
-        p.setPen(QPen(QColor(*_rgb(PALETTE["border"])), 1))
-        p.setBrush(Qt.NoBrush)
-        p.drawRoundedRect(rect, rad, rad)
+        w, h = self.width(), self.height()
+        gap = 3.0
+        bw = max(2.0, (w - gap * (self._bars - 1)) / self._bars)
+        active = self._level > 0.02
+        color = QColor(P["accent"] if active else P["surface_3"])
+        x = 0.0
+        for hh in self._heights:
+            bh = max(3.0, h * hh)
+            p.setBrush(color)
+            p.drawRoundedRect(QRectF(x, h - bh, bw, bh), 1.5, 1.5)
+            x += bw + gap
         p.end()
+
+
+# 旧名字兼容（settings_window 历史用法）
+VolumeMeter = BarMeter

@@ -32,6 +32,7 @@ from .icons import (
     icon_processing,
     icon_recording,
 )
+from .recording_hud import RecordingHUD
 from .settings_window import SettingsWindow
 
 logger = logging.getLogger(__name__)
@@ -107,6 +108,12 @@ class TrayApp(QObject):
         self.tray.setContextMenu(self.menu)
         self.tray.activated.connect(self._on_tray_activated)
 
+        # 录音胶囊 HUD（屏幕底部居中弹出）
+        self.hud = RecordingHUD()
+        self.stateChanged.connect(lambda s: self.hud.set_app_state(s.value))
+        self.levelChanged.connect(self.hud.on_level)
+        self.recognized.connect(self.hud.on_recognized)
+
         self.settings_window: SettingsWindow | None = None
         self.recognized.connect(self._on_recognized)
         self.stateChanged.connect(self._on_state_changed)
@@ -141,6 +148,7 @@ class TrayApp(QObject):
             return
         self.hotkey.set_hotkey(self.config.hotkey)
         self.hotkey.start()
+        self.hud.set_hotkey_label(self.hotkey.description)
         self._set_state(State.IDLE)
         self.tray.setToolTip(
             f"Voice Input · 待机（按住 {self.hotkey.description} 说话）"
@@ -228,6 +236,7 @@ class TrayApp(QObject):
         # 在线更新部分配置
         if cfg.hotkey != self.hotkey.description:
             self.hotkey.set_hotkey(cfg.hotkey)
+        self.hud.set_hotkey_label(self.hotkey.description)
         self.tray.setToolTip(
             f"Voice Input · 待机（按住 {self.hotkey.description} 说话）"
         )
