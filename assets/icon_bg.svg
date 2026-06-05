@@ -1,55 +1,21 @@
 <svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <!-- 柔和蓝渐变圆角磁贴（与「柔和卡片」主题同语言，accent #5b8def） -->
   <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="0.4" y2="1">
-      <stop offset="0" stop-color="#141d3a"/>
-      <stop offset="0.5" stop-color="#0a0f22"/>
-      <stop offset="1" stop-color="#1a0a2e"/>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#7da7f7"/>
+      <stop offset="0.55" stop-color="#5b8def"/>
+      <stop offset="1" stop-color="#3f6fdd"/>
     </linearGradient>
-    <radialGradient id="haloTop" cx="0.5" cy="0.32" r="0.52">
-      <stop offset="0" stop-color="#22d3ee" stop-opacity="0.30"/>
-      <stop offset="0.55" stop-color="#22d3ee" stop-opacity="0.06"/>
-      <stop offset="1" stop-color="#22d3ee" stop-opacity="0"/>
-    </radialGradient>
-    <radialGradient id="haloBot" cx="0.5" cy="0.84" r="0.5">
-      <stop offset="0" stop-color="#e23bff" stop-opacity="0.24"/>
-      <stop offset="0.6" stop-color="#e23bff" stop-opacity="0.05"/>
-      <stop offset="1" stop-color="#e23bff" stop-opacity="0"/>
-    </radialGradient>
+    <linearGradient id="sheen" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.20"/>
+      <stop offset="0.45" stop-color="#ffffff" stop-opacity="0.05"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
   </defs>
 
-  <!-- 深色圆角底（squircle） -->
-  <rect x="0" y="0" width="1024" height="1024" rx="232" fill="url(#bg)"/>
-
-  <!-- 双色光晕 -->
-  <circle cx="512" cy="340" r="430" fill="url(#haloTop)"/>
-  <ellipse cx="512" cy="860" rx="470" ry="300" fill="url(#haloBot)"/>
-
-  <!-- 同心科技点线环（暗装饰，衬在麦克风后） -->
-  <g fill="none">
-    <circle cx="512" cy="470" r="372" stroke="#22d3ee" stroke-opacity="0.30"
-            stroke-width="7" stroke-dasharray="3 30" stroke-linecap="round"/>
-    <circle cx="512" cy="470" r="316" stroke="#e23bff" stroke-opacity="0.22"
-            stroke-width="5" stroke-dasharray="2 24" stroke-linecap="round"/>
-  </g>
-
-  <!-- 顶部青色内描边高光 -->
-  <rect x="6" y="6" width="1012" height="1012" rx="226" fill="none"
-        stroke="#22d3ee" stroke-opacity="0.20" stroke-width="4"/>
-
-  <!-- ✦ 星点 + 粒子 -->
-  <g fill="#7df9ff">
-    <path d="M792 232 Q792 290 850 290 Q792 290 792 348 Q792 290 734 290 Q792 290 792 232 Z" opacity="0.9"/>
-    <path d="M236 742 Q236 782 276 782 Q236 782 236 822 Q236 782 196 782 Q236 782 236 742 Z" opacity="0.7"/>
-  </g>
-  <g fill="#f7b6ff">
-    <path d="M806 656 Q806 684 834 684 Q806 684 806 712 Q806 684 778 684 Q806 684 806 656 Z" opacity="0.7"/>
-  </g>
-  <!-- 散点粒子 -->
-  <g>
-    <circle cx="180" cy="360" r="6" fill="#22d3ee" opacity="0.6"/>
-    <circle cx="858" cy="470" r="5" fill="#e23bff" opacity="0.55"/>
-    <circle cx="300" cy="200" r="4" fill="#7df9ff" opacity="0.5"/>
-    <circle cx="720" cy="852" r="5" fill="#22d3ee" opacity="0.5"/>
-    <circle cx="168" cy="600" r="4" fill="#f7b6ff" opacity="0.45"/>
-  </g>
+  <rect x="64" y="64" width="896" height="896" rx="232" fill="url(#bg)"/>
+  <rect x="64" y="64" width="896" height="896" rx="232" fill="url(#sheen)"/>
+  <!-- 内侧高光描边，一点点玻璃感 -->
+  <rect x="70" y="70" width="884" height="884" rx="226" fill="none"
+        stroke="#ffffff" stroke-opacity="0.22" stroke-width="8"/>
 </svg>

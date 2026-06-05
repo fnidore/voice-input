@@ -42,6 +42,9 @@ class Config:
     play_sound: bool = True
     sound_volume: float = 0.5             # 0~1
 
+    # ---- 录音浮窗（胶囊 HUD）----
+    show_hud: bool = True                 # 说话时屏幕底部显示状态浮窗
+
     # ---- 自启动 ----
     autostart_enabled: bool = False
 

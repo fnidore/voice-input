@@ -393,8 +393,8 @@ class SettingsWindow(QDialog):
                               hint="paste 对中文最稳；type 走 xdotool，可能丢字"))
         col.addWidget(card2)
 
-        # ===== 卡片 3：提示音与启动 =====
-        card3 = Card("check", "提示音与启动")
+        # ===== 卡片 3：提示与启动 =====
+        card3 = Card("check", "提示与启动", "提示音、录音浮窗与开机自启")
 
         self.chk_sound = ToggleSwitch()
         self.chk_sound.setChecked(self.config.play_sound)
@@ -420,6 +420,13 @@ class SettingsWindow(QDialog):
         self.vol_row_widget.setVisible(self.config.play_sound)
         self.chk_sound.toggled.connect(self.vol_row_widget.setVisible)
         card3.add(self.vol_row_widget)
+
+        card3.divider()
+
+        self.chk_hud = ToggleSwitch()
+        self.chk_hud.setChecked(self.config.show_hud)
+        card3.add(toggle_row("录音浮窗", "说话时屏幕底部弹出胶囊状态浮窗（聆听/识别/已粘贴）",
+                             self.chk_hud))
 
         card3.divider()
 
@@ -688,6 +695,7 @@ class SettingsWindow(QDialog):
         cfg.input_device_index = self.cmb_mic.currentData()
         cfg.play_sound = self.chk_sound.isChecked()
         cfg.sound_volume = self.sld_volume.value() / 100.0
+        cfg.show_hud = self.chk_hud.isChecked()
         autostart_new = self.chk_autostart.isChecked()
         cfg.autostart_enabled = autostart_new
 

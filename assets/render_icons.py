@@ -41,13 +41,19 @@ def _render_svg(svg_path: Path, size: int) -> Image.Image:
     return Image.frombytes("RGBA", (size, size), buf, "raw", "BGRA")
 
 
-def _add_glow(mic: Image.Image, radius: int, gain: float) -> Image.Image:
-    """用麦克风层自身的模糊做青色辉光层（RGBA）。"""
-    blurred = mic.filter(ImageFilter.GaussianBlur(radius))
-    # 提升 alpha 让辉光更明显
-    r, g, b, a = blurred.split()
-    a = a.point(lambda v: min(255, int(v * gain)))
-    return Image.merge("RGBA", (r, g, b, a))
+def _soft_shadow(
+    mic: Image.Image,
+    radius: int = 30,
+    gain: float = 0.45,
+    tint: tuple[int, int, int] = (30, 58, 138),
+    dy: int = 16,
+) -> Image.Image:
+    """用麦克风层 alpha 做柔和深蓝投影（轻微下移），替代旧版霓虹辉光。"""
+    alpha = mic.split()[3].filter(ImageFilter.GaussianBlur(radius))
+    alpha = alpha.point(lambda v: int(v * gain))
+    shadow = Image.new("RGBA", mic.size, tint + (0,))
+    shadow.putalpha(alpha)
+    return ImageChops.offset(shadow, 0, dy)
 
 
 def main() -> int:
@@ -56,15 +62,9 @@ def main() -> int:
     bg = _render_svg(ASSETS / "icon_bg.svg", MASTER)
     mic = _render_svg(ASSETS / "icon_mic.svg", MASTER)
 
-    # 三层辉光（远散 + 外散 + 内聚）叠加，营造更盛的霓虹质感
-    glow_far = _add_glow(mic, radius=80, gain=1.5)
-    glow_outer = _add_glow(mic, radius=42, gain=1.8)
-    glow_inner = _add_glow(mic, radius=14, gain=2.1)
-
+    # 柔和投影 + 麦克风（清新简约，不再做霓虹辉光）
     composite = bg.copy()
-    composite = Image.alpha_composite(composite, glow_far)
-    composite = Image.alpha_composite(composite, glow_outer)
-    composite = Image.alpha_composite(composite, glow_inner)
+    composite = Image.alpha_composite(composite, _soft_shadow(mic))
     composite = Image.alpha_composite(composite, mic)
 
     master_png = ASSETS / "icon_1024.png"

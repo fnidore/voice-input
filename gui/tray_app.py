@@ -108,11 +108,11 @@ class TrayApp(QObject):
         self.tray.setContextMenu(self.menu)
         self.tray.activated.connect(self._on_tray_activated)
 
-        # 录音胶囊 HUD（屏幕底部居中弹出）
+        # 录音胶囊 HUD（屏幕底部居中弹出；设置里可开关 show_hud）
         self.hud = RecordingHUD()
-        self.stateChanged.connect(lambda s: self.hud.set_app_state(s.value))
+        self.stateChanged.connect(self._update_hud)
         self.levelChanged.connect(self.hud.on_level)
-        self.recognized.connect(self.hud.on_recognized)
+        self.recognized.connect(self._hud_recognized)
 
         self.settings_window: SettingsWindow | None = None
         self.recognized.connect(self._on_recognized)
@@ -252,6 +252,17 @@ class TrayApp(QObject):
             except Exception:
                 pass
         self.app.quit()
+
+    # ---------- 录音浮窗 ----------
+    def _update_hud(self, s: State) -> None:
+        if self.config.show_hud:
+            self.hud.set_app_state(s.value)
+        elif self.hud.isVisible():
+            self.hud.set_app_state("idle")   # 关闭开关后立刻淡出
+
+    def _hud_recognized(self, _item) -> None:
+        if self.config.show_hud:
+            self.hud.on_recognized()
 
     # ---------- 状态机 ----------
     def _set_state(self, s: State) -> None:
