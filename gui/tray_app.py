@@ -10,7 +10,7 @@ from enum import Enum
 
 from PySide6.QtCore import QObject, Qt, QTimer, Signal
 from PySide6.QtGui import QAction
-from PySide6.QtWidgets import QApplication, QMenu, QMessageBox, QSystemTrayIcon
+from PySide6.QtWidgets import QApplication, QMenu, QSystemTrayIcon
 
 from core import sound
 from core.audio import Recorder
@@ -34,6 +34,7 @@ from .icons import (
 )
 from .recording_hud import RecordingHUD
 from .settings_window import SettingsWindow
+from .style import themed_msgbox
 
 logger = logging.getLogger(__name__)
 
@@ -122,8 +123,8 @@ class TrayApp(QObject):
     def start(self) -> None:
         missing = check_deps(self.config.input_method)
         if missing:
-            QMessageBox.critical(
-                None,
+            themed_msgbox(
+                "critical",
                 "缺少系统依赖",
                 f"缺少: {', '.join(missing)}\n请先运行: sudo apt install -y {' '.join(missing)}",
             )
@@ -216,7 +217,7 @@ class TrayApp(QObject):
 
     def _reload_model(self) -> None:
         if self.state == State.PROCESSING:
-            QMessageBox.warning(None, "稍等", "正在识别，等一下再重载。")
+            themed_msgbox("warning", "稍等", "正在识别，等一下再重载。")
             return
         self.recognizer = Recognizer(preset_key=self.config.model_preset, device=self.config.model_device,
                                      custom_model_path=self.config.custom_model_path)
@@ -231,7 +232,7 @@ class TrayApp(QObject):
                 "已启用（登录后自动启动）" if enabled else "已禁用",
             )
         except Exception as e:
-            QMessageBox.critical(None, "自启配置失败", str(e))
+            themed_msgbox("critical", "自启配置失败", str(e))
 
     def _apply_config(self, cfg: Config) -> None:
         # 在线更新部分配置

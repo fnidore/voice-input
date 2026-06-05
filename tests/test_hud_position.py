@@ -7,6 +7,7 @@ import os
 
 import pytest
 
+pytest.importorskip("PySide6")   # CI 轻量测试环境无 GUI 依赖时跳过
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from PySide6.QtCore import QPoint, QSettings  # noqa: E402

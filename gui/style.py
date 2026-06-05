@@ -182,6 +182,10 @@ QLabel[vi="togTitle"] {{ font-size: 13px; font-weight: 600; color: {P['text']}; 
 QLabel[vi="togDesc"]  {{ font-size: 12px; color: {P['text_3']}; background: transparent; }}
 QLabel {{ background: transparent; color: {P['text']}; }}
 
+/* 弹窗（系统深色模式下原生背景可能与主题文字色冲突，显式锁定） */
+QMessageBox {{ background: {P['surface']}; }}
+QMessageBox QLabel {{ color: {P['text']}; background: transparent; }}
+
 /* 徽章 pill */
 QLabel[vi="pill"] {{
     background: {P['accent_tint']}; color: {P['accent']};
@@ -328,6 +332,26 @@ QSpinBox::up-button, QSpinBox::down-button {{
 def apply_soft_theme(widget) -> None:
     """按当前主题给窗口套「柔和卡片」QSS。"""
     widget.setStyleSheet(_qss(palette()))
+
+
+def themed_msgbox(kind: str, title: str, text: str, parent=None) -> int:
+    """主题化 QMessageBox（kind: info / warning / critical）。
+
+    parent=None 的弹窗继承不到任何窗口 QSS，Windows 系统深色模式下
+    会出现黑底黑字，这里统一显式套主题。
+    """
+    from PySide6.QtWidgets import QMessageBox  # 延迟 import，避免循环依赖
+    icons = {
+        "info": QMessageBox.Information,
+        "warning": QMessageBox.Warning,
+        "critical": QMessageBox.Critical,
+    }
+    box = QMessageBox(parent)
+    box.setIcon(icons[kind])
+    box.setWindowTitle(title)
+    box.setText(text)
+    apply_soft_theme(box)
+    return box.exec()
 
 
 # 兼容旧入口
