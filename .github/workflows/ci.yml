@@ -63,6 +63,13 @@ jobs:
           pip install -r requirements.txt
           pip install pyinstaller
 
+      - name: 版本号写入 core/version.py（与 tag 同步）
+        shell: bash
+        run: |
+          ver="${GITHUB_REF_NAME#v}"
+          printf '"""应用版本号（CI 构建时自动与 git tag 同步）。"""\n\n__version__ = "%s"\n' "$ver" > core/version.py
+          cat core/version.py
+
       - name: PyInstaller 打包
         run: pyinstaller voice_input.spec
 

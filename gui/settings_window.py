@@ -35,6 +35,7 @@ from PySide6.QtWidgets import (
 
 from core.audio import Recorder
 from core.config import Config, LOG_DIR
+from core.version import __version__
 from core.history import History
 from core.presets import PRESETS, get_preset, model_cache_path
 
@@ -229,6 +230,7 @@ class SettingsWindow(QDialog):
         lay = QHBoxLayout(footer)
         lay.setContentsMargins(24, 13, 10, 13)
         lay.setSpacing(10)
+        lay.addWidget(hint_label(f"v{__version__}", mono=True))
         lay.addStretch(1)
         self.btn_close = QPushButton("关闭")
         self.btn_close.setProperty("ghost", "true")
