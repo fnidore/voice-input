@@ -56,10 +56,12 @@ jobs:
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y libportaudio2
 
-      - name: 安装打包依赖（CPU 版 torch）
+      - name: 安装打包依赖（CPU 版 torch，版本与 GPU 运行时锁死一致）
         run: |
           python -m pip install --upgrade pip
-          pip install torch torchaudio --index-url https://download.pytorch.org/whl/cpu
+          # 2.11.0 = Python 3.10 最后一个有 cu128 轮子的版本；
+          # 应用内「启用 GPU 加速」下载的运行时是 2.11.0+cu128，必须同版本插队替换
+          pip install torch==2.11.0 torchaudio==2.11.0 --index-url https://download.pytorch.org/whl/cpu
           pip install -r requirements.txt
           pip install pyinstaller
 

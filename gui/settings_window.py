@@ -9,6 +9,8 @@
 from __future__ import annotations
 
 import logging
+import sys
+import threading
 from datetime import datetime
 
 from PySide6.QtCore import QEvent, QObject, Qt, QTimer, Signal
@@ -23,6 +25,7 @@ from PySide6.QtWidgets import (
     QLabel,
     QLineEdit,
     QMessageBox,
+    QProgressBar,
     QPushButton,
     QScrollArea,
     QSizeGrip,
@@ -33,6 +36,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from core import gpu_runtime
 from core.audio import Recorder
 from core.config import Config, LOG_DIR
 from core.version import __version__
@@ -112,6 +116,10 @@ class SettingsWindow(QDialog):
     autostartToggled = Signal(bool)
     reloadModelRequested = Signal()
     hudResetRequested = Signal()   # 录音浮窗「恢复默认位置」
+    # GPU 运行时下载（worker 线程 → GUI 线程信号桥）
+    _gpuProgress = Signal(int, int, str)   # 已完成字节, 总字节, 当前文件
+    _gpuFinished = Signal(str)             # "" = 成功；"cancelled"；其余 = 错误信息
+    _deviceResolved = Signal(str)          # 底栏实际设备（后台线程探测）
 
     def __init__(self, config: Config, history: History, parent=None) -> None:
         super().__init__(parent)
@@ -230,8 +238,12 @@ class SettingsWindow(QDialog):
         lay = QHBoxLayout(footer)
         lay.setContentsMargins(24, 13, 10, 13)
         lay.setSpacing(10)
-        lay.addWidget(hint_label(f"v{__version__}", mono=True))
+        self.lbl_footer_ver = hint_label(f"v{__version__}", mono=True)
+        lay.addWidget(self.lbl_footer_ver)
         lay.addStretch(1)
+        self._deviceResolved.connect(
+            lambda dev: self.lbl_footer_ver.setText(f"v{__version__} · {dev}"))
+        self._probe_actual_device()
         self.btn_close = QPushButton("关闭")
         self.btn_close.setProperty("ghost", "true")
         self.btn_close.clicked.connect(self.hide)
@@ -244,6 +256,17 @@ class SettingsWindow(QDialog):
         grip.setFixedSize(14, 14)
         lay.addWidget(grip, 0, Qt.AlignBottom)
         return footer
+
+    def _probe_actual_device(self) -> None:
+        """后台线程探测识别实际跑在什么设备上（torch 未加载时避免卡 GUI）。"""
+        def probe() -> None:
+            try:
+                from core.recognizer import resolve_device
+                dev = resolve_device(self.config.model_device)
+                self._deviceResolved.emit("CUDA" if dev.startswith("cuda") else "CPU")
+            except Exception as e:
+                logger.warning("probe device failed: %s", e)
+        threading.Thread(target=probe, daemon=True).start()
 
     def _wrap_scroll(self, content: QWidget) -> QScrollArea:
         scroll = QScrollArea()
@@ -354,6 +377,11 @@ class SettingsWindow(QDialog):
         self.lbl_lang_na.hide()
         right.addWidget(self.lbl_lang_na)
         card.add(self._two_col(left, right))
+
+        # GPU 加速运行时（仅 Win/Linux + N 卡 + 安装包内置 CPU torch 时有意义）
+        if gpu_runtime.files_for_platform() and gpu_runtime.detect_nvidia():
+            card.divider()
+            self._build_gpu_rows(card)
         col.addWidget(card)
 
         # ===== 卡片 2：音频输入 =====
@@ -454,6 +482,119 @@ class SettingsWindow(QDialog):
 
         col.addStretch(1)
         return canvas
+
+    # ---------- GPU 加速运行时 ----------
+
+    def _build_gpu_rows(self, card: Card) -> None:
+        """三种状态互斥显隐：未安装（按钮）/ 下载中（进度条）/ 已安装（删除）。"""
+        gb = gpu_runtime.total_download_size() / (1 << 30)
+
+        # 未安装：启用按钮 + 说明
+        idle_row = QHBoxLayout()
+        idle_row.setSpacing(14)
+        self.btn_gpu_enable = QPushButton("⚡ 启用 GPU 加速")
+        self.btn_gpu_enable.setObjectName("primary")
+        self.btn_gpu_enable.clicked.connect(self._gpu_start_download)
+        idle_row.addWidget(self.btn_gpu_enable)
+        idle_row.addWidget(hint_label(
+            f"检测到 NVIDIA 显卡。下载 CUDA 运行时约 {gb:.1f}GB，完成后重启生效"), 1)
+        self.gpu_idle_widget = self._wrap_layout(idle_row)
+
+        # 下载中：进度条 + 取消
+        dl_row = QHBoxLayout()
+        dl_row.setSpacing(14)
+        self.gpu_progress = QProgressBar()
+        self.gpu_progress.setRange(0, 1000)
+        self.gpu_progress.setTextVisible(False)
+        self.lbl_gpu_status = hint_label("", mono=True)
+        self.btn_gpu_cancel = QPushButton("取消")
+        self.btn_gpu_cancel.setProperty("ghost", True)
+        self.btn_gpu_cancel.clicked.connect(lambda: self._gpu_cancel_flag.set())
+        dl_row.addWidget(self.gpu_progress, 1)
+        dl_row.addWidget(self.lbl_gpu_status)
+        dl_row.addWidget(self.btn_gpu_cancel)
+        self.gpu_dl_widget = self._wrap_layout(dl_row)
+
+        # 已安装：状态 pill + 删除按钮
+        done_row = QHBoxLayout()
+        done_row.setSpacing(14)
+        done_row.addWidget(pill_label("⚡ GPU 运行时已启用", "pillOk"))
+        done_row.addStretch(1)
+        self.btn_gpu_remove = QPushButton("删除运行时")
+        self.btn_gpu_remove.setProperty("ghost", True)
+        self.btn_gpu_remove.clicked.connect(self._gpu_remove)
+        done_row.addWidget(self.btn_gpu_remove)
+        self.gpu_done_widget = self._wrap_layout(done_row)
+
+        for w in (self.gpu_idle_widget, self.gpu_dl_widget, self.gpu_done_widget):
+            card.add(w)
+        self._gpu_cancel_flag = threading.Event()
+        self._gpuProgress.connect(self._on_gpu_progress)
+        self._gpuFinished.connect(self._on_gpu_finished)
+        self._gpu_refresh_state()
+
+    def _gpu_refresh_state(self, downloading: bool = False) -> None:
+        installed = gpu_runtime.is_installed()
+        self.gpu_idle_widget.setVisible(not installed and not downloading)
+        self.gpu_dl_widget.setVisible(downloading)
+        self.gpu_done_widget.setVisible(installed and not downloading)
+
+    def _gpu_start_download(self) -> None:
+        gb = gpu_runtime.total_download_size() / (1 << 30)
+        box = QMessageBox(self)
+        box.setIcon(QMessageBox.Question)
+        box.setWindowTitle("启用 GPU 加速")
+        box.setText(f"将下载约 {gb:.1f}GB 的 CUDA 运行时（解压后约 {gb * 2.2:.0f}GB），"
+                    f"保存到用户数据目录。\n下载完成后重启 Voice Input 生效。\n\n开始下载？")
+        box.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+        apply_soft_theme(box)
+        if box.exec() != QMessageBox.Yes:
+            return
+        self._gpu_cancel_flag.clear()
+        self._gpu_refresh_state(downloading=True)
+
+        def work() -> None:
+            try:
+                gpu_runtime.download_runtime(
+                    progress_cb=self._gpuProgress.emit,
+                    cancel=self._gpu_cancel_flag.is_set)
+                self._gpuFinished.emit("")
+            except InterruptedError:
+                self._gpuFinished.emit("cancelled")
+            except Exception as e:
+                logger.exception("gpu runtime download failed")
+                self._gpuFinished.emit(str(e))
+
+        threading.Thread(target=work, daemon=True, name="gpu-runtime-dl").start()
+
+    def _on_gpu_progress(self, done: int, total: int, fname: str) -> None:
+        self.gpu_progress.setValue(round(done / max(total, 1) * 1000))
+        self.lbl_gpu_status.setText(
+            f"{done / (1 << 30):.2f} / {total / (1 << 30):.1f} GB")
+        self.lbl_gpu_status.setToolTip(fname)
+
+    def _on_gpu_finished(self, err: str) -> None:
+        self._gpu_refresh_state(downloading=False)
+        from .style import themed_msgbox
+        if not err:
+            themed_msgbox("info", "GPU 加速已就绪",
+                          "CUDA 运行时下载完成。\n重启 Voice Input 后识别将使用 GPU"
+                          "（托盘菜单退出，再重新启动）。")
+        elif err != "cancelled":
+            themed_msgbox("warning", "下载失败",
+                          f"GPU 运行时下载失败：{err}\n稍后可重试（已下载部分支持断点续传）。")
+
+    def _gpu_remove(self) -> None:
+        box = QMessageBox(self)
+        box.setIcon(QMessageBox.Question)
+        box.setWindowTitle("删除 GPU 运行时")
+        box.setText("删除后重启 Voice Input 将回到内置 CPU 推理。\n确定删除（释放约 6GB 磁盘）？")
+        box.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+        apply_soft_theme(box)
+        if box.exec() != QMessageBox.Yes:
+            return
+        gpu_runtime.remove_runtime()
+        self._gpu_refresh_state()
 
     def _on_preset_changed(self) -> None:
         """模型预设变化：更新说明、本地路径、自定义行显隐、语言/热词可用性。"""

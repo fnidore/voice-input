@@ -273,6 +273,12 @@ QSlider::handle:horizontal {{
     background: {P['accent']}; border: 2px solid {P['surface']};
 }}
 
+/* ============ 进度条（GPU 运行时下载） ============ */
+QProgressBar {{
+    height: 8px; border: none; border-radius: 4px; background: {P['surface_3']};
+}}
+QProgressBar::chunk {{ background: {P['accent']}; border-radius: 4px; }}
+
 /* ============ 热词 chip ============ */
 QFrame[vi="chip"] {{
     background: {P['surface_2']}; border: 1px solid {P['border']}; border-radius: 14px;

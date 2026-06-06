@@ -18,6 +18,7 @@ from PySide6.QtWidgets import QApplication, QMessageBox, QSystemTrayIcon
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from core.config import Config, ensure_dirs       # noqa: E402
+from core.gpu_runtime import activate as activate_gpu_runtime  # noqa: E402
 from core.logger import setup_logging              # noqa: E402
 from core.singleton import acquire_single_instance_lock  # noqa: E402
 
@@ -62,6 +63,9 @@ def _install_signal_handlers(app: QApplication) -> None:
 def main() -> int:
     ensure_dirs()
     setup_logging()
+
+    # GPU 运行时插队加载——必须在任何 torch import 之前
+    activate_gpu_runtime()
 
     logger.info("=" * 60)
     logger.info("Voice Input GUI starting (pid=%d)", os.getpid())
