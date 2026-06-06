@@ -149,6 +149,14 @@ class TestCandidateUrls:
                 assert f["size"] > 0, f["name"]
                 assert len(f["sha256"]) == 64, f["name"]
 
+    def test_total_size_exceeds_int32(self):
+        """护栏：运行时总量 >2^31，进度信号/进度条必须用 float/64 位，
+        否则字节数会溢出 32 位 int 把进度条算崩（见 settings_window._gpuProgress）。"""
+        INT32_MAX = 2 ** 31 - 1
+        for plat in ("win", "linux"):
+            total = sum(f["size"] for f in gpu_runtime._FILES[plat])
+            assert total > INT32_MAX, f"{plat} total {total} 不再超 int32？重新评估进度信号类型"
+
 
 class TestShaVerify:
     def test_mirror_fallback_on_bad_sha(self, runtime_dir, tmp_path, monkeypatch):

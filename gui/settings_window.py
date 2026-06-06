@@ -117,7 +117,9 @@ class SettingsWindow(QDialog):
     reloadModelRequested = Signal()
     hudResetRequested = Signal()   # 录音浮窗「恢复默认位置」
     # GPU 运行时下载（worker 线程 → GUI 线程信号桥）
-    _gpuProgress = Signal(int, int, str)   # 已完成字节, 总字节, 当前文件
+    # 用 float 而非 int：字节数会超过 2^31（运行时 3.5GB），Qt 的 Signal(int)
+    # 是 32 位有符号整数，大于 ~2GB 会溢出成负数把进度条算崩。
+    _gpuProgress = Signal(float, float, str)  # 已完成字节, 总字节, 当前文件
     _gpuFinished = Signal(str)             # "" = 成功；"cancelled"；其余 = 错误信息
     _deviceResolved = Signal(str)          # 底栏实际设备（后台线程探测）
 
@@ -567,8 +569,9 @@ class SettingsWindow(QDialog):
 
         threading.Thread(target=work, daemon=True, name="gpu-runtime-dl").start()
 
-    def _on_gpu_progress(self, done: int, total: int, fname: str) -> None:
-        self.gpu_progress.setValue(round(done / max(total, 1) * 1000))
+    def _on_gpu_progress(self, done: float, total: float, fname: str) -> None:
+        # done/total 为字节数（float，避免 32 位溢出）；permille 是 0~1000 小整数
+        self.gpu_progress.setValue(round(done / max(total, 1.0) * 1000))
         self.lbl_gpu_status.setText(
             f"{done / (1 << 30):.2f} / {total / (1 << 30):.1f} GB")
         self.lbl_gpu_status.setToolTip(fname)
