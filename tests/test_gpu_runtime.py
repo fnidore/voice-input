@@ -18,6 +18,8 @@ def runtime_dir(tmp_path, monkeypatch):
     d = tmp_path / "gpu-runtime"
     monkeypatch.setattr(gpu_runtime, "GPU_RUNTIME_DIR", d)
     monkeypatch.setattr(gpu_runtime, "STATE_FILE", d / "installed.json")
+    # 固定平台为 linux，让下载/解压测试在任意 CI runner（含无 GPU 的 macOS）一致
+    monkeypatch.setattr(gpu_runtime, "_platform_key", lambda: "linux")
     return d
 
 
