@@ -8,7 +8,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from core.presets import DEFAULT_PRESET, clean_text, get_preset
+from core.presets import DEFAULT_PRESET, clean_text, get_preset, plan_offline_load
 
 logger = logging.getLogger(__name__)
 
@@ -54,15 +54,28 @@ class Recognizer:
         if not self.model_id:
             raise ValueError("自定义模型路径为空，请在设置里填 ModelScope ID 或本地模型目录")
         self.device = resolve_device(self.device)
+
+        # 智能离线：主模型+子模型本地全已缓存 → 传本地绝对路径，funasr 跳过联网下载/校验；
+        # 任一缺失 → 维持在线（传 ID，首次自动下载）。不可变：拷贝 load_kwargs 再改。
+        model_arg = self.model_id
+        load_kwargs = dict(self.preset.load_kwargs)
+        offline_ok, resolved = plan_offline_load(self.model_id, load_kwargs)
+        if offline_ok:
+            model_arg = resolved["model"]
+            load_kwargs.update(resolved["load_kwargs"])
+            logger.info("本地模型已就绪，离线加载（不联网）")
+        else:
+            logger.info("本地模型不全，在线模式加载（首次会联网下载）")
+
         from funasr import AutoModel  # 延迟 import 避免启动慢
-        logger.info("loading %s on %s ...", self.model_id, self.device)
+        logger.info("loading %s on %s ...", model_arg, self.device)
         t0 = time.time()
         self.model = AutoModel(
-            model=self.model_id,
+            model=model_arg,
             device=self.device,
             disable_update=True,
             trust_remote_code=False,
-            **self.preset.load_kwargs,
+            **load_kwargs,
         )
         logger.info("model loaded in %.1fs", time.time() - t0)
 
