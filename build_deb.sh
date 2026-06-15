@@ -52,7 +52,7 @@ Version: $VERSION
 Section: utils
 Priority: optional
 Architecture: $ARCH
-Depends: xdotool, xclip, libportaudio2
+Depends: xdotool, xclip, libportaudio2, libxcb-cursor0
 Installed-Size: $INSTALLED_KB
 Maintainer: fnidore <fnidore@outlook.com>
 Description: Voice Input - 全局语音输入工具
